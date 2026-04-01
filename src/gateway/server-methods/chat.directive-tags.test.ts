@@ -231,6 +231,7 @@ function createChatContext(): Pick<
   | "chatRunBuffers"
   | "chatDeltaSentAt"
   | "chatAbortedRuns"
+  | "addChatRun"
   | "removeChatRun"
   | "dedupe"
   | "registerToolEventRecipient"
@@ -244,6 +245,7 @@ function createChatContext(): Pick<
     chatRunBuffers: new Map(),
     chatDeltaSentAt: new Map(),
     chatAbortedRuns: new Map(),
+    addChatRun: vi.fn(),
     removeChatRun: vi.fn(),
     dedupe: new Map(),
     registerToolEventRecipient: vi.fn(),
@@ -368,6 +370,11 @@ describe("chat directive tag stripping for non-streaming final payloads", () => 
     });
 
     const register = context.registerToolEventRecipient as unknown as ReturnType<typeof vi.fn>;
+    const addChatRun = context.addChatRun as unknown as ReturnType<typeof vi.fn>;
+    expect(addChatRun).toHaveBeenCalledWith("run-current", {
+      sessionKey: "main",
+      clientRunId: "idem-tool-events-on",
+    });
     expect(register).toHaveBeenCalledWith("run-current", "conn-1");
     expect(register).toHaveBeenCalledWith("run-same-session", "conn-1");
     expect(register).not.toHaveBeenCalledWith("run-other-session", "conn-1");

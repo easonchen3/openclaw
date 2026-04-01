@@ -302,12 +302,12 @@ export function handleMessageUpdate(
         delta: deltaText,
         mediaUrls,
       });
-      emitAgentEvent({
-        runId: ctx.params.runId,
+      void ctx.params.onAgentEvent?.({
         stream: "assistant",
         data,
       });
-      void ctx.params.onAgentEvent?.({
+      emitAgentEvent({
+        runId: ctx.params.runId,
         stream: "assistant",
         data,
       });
@@ -385,12 +385,12 @@ export function handleMessageEnd(
       delta: cleanedText,
       mediaUrls,
     });
-    emitAgentEvent({
-      runId: ctx.params.runId,
+    void ctx.params.onAgentEvent?.({
       stream: "assistant",
       data,
     });
-    void ctx.params.onAgentEvent?.({
+    emitAgentEvent({
+      runId: ctx.params.runId,
       stream: "assistant",
       data,
     });
