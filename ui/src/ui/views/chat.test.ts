@@ -88,6 +88,9 @@ function createChatHeaderState(
     throw new Error(`Unexpected request: ${method}`);
   });
   const state = {
+    mockPortalUserId: null,
+    mockPortalLoginInput: "",
+    mockPortalLoginError: null,
     sessionKey: "main",
     connected: true,
     sessionsHideCron: true,
@@ -122,10 +125,12 @@ function createChatHeaderState(
       themeMode: "dark",
       splitRatio: 0.6,
       navCollapsed: false,
+      navWidth: 220,
       navGroupsCollapsed: {},
       borderRadius: 50,
       chatFocusMode: false,
       chatShowThinking: false,
+      chatShowToolCalls: true,
     },
     chatMessage: "",
     chatStream: null,
@@ -143,6 +148,8 @@ function createChatHeaderState(
     applySettings(next: AppViewState["settings"]) {
       state.settings = next;
     },
+    handleMockPortalLogin: vi.fn(),
+    handleMockPortalLogout: vi.fn(),
     loadAssistantIdentity: vi.fn(),
     resetToolStream: vi.fn(),
     resetChatScroll: vi.fn(),

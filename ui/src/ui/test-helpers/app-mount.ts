@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, vi } from "vitest";
 import { i18n } from "../../i18n/index.ts";
+import { saveMockPortalUserId } from "../mock-portal-auth.ts";
 import "../app.ts";
 import type { OpenClawApp } from "../app.ts";
 
@@ -22,6 +23,7 @@ class MockWebSocket {
 
 export function mountApp(pathname: string) {
   window.history.replaceState({}, "", pathname);
+  saveMockPortalUserId("u1001");
   const app = document.createElement("openclaw-app") as OpenClawApp;
   document.body.append(app);
   app.connected = true;
@@ -34,6 +36,7 @@ export function registerAppMountHooks() {
     window.__OPENCLAW_CONTROL_UI_BASE_PATH__ = undefined;
     localStorage.clear();
     sessionStorage.clear();
+    saveMockPortalUserId("u1001");
     document.body.innerHTML = "";
     await i18n.setLocale("en");
     vi.stubGlobal("WebSocket", MockWebSocket as unknown as typeof WebSocket);
@@ -47,6 +50,7 @@ export function registerAppMountHooks() {
     window.__OPENCLAW_CONTROL_UI_BASE_PATH__ = undefined;
     localStorage.clear();
     sessionStorage.clear();
+    saveMockPortalUserId(null);
     document.body.innerHTML = "";
     await i18n.setLocale("en");
     vi.unstubAllGlobals();

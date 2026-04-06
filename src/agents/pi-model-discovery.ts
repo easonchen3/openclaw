@@ -6,6 +6,15 @@ import type {
   ModelRegistry as PiModelRegistry,
 } from "@mariozechner/pi-coding-agent";
 import { ensureAuthProfileStore } from "./auth-profiles.js";
+import {
+  CUSTOM_LOCAL_AUTH_MARKER,
+  GCP_VERTEX_CREDENTIALS_MARKER,
+  isKnownEnvApiKeyMarker,
+  isOAuthApiKeyMarker,
+  NON_ENV_SECRETREF_MARKER,
+  OLLAMA_LOCAL_AUTH_MARKER,
+} from "./model-auth-markers.js";
+import { normalizeOptionalSecretInput } from "../utils/normalize-secret-input.js";
 import { resolvePiCredentialMapFromStore, type PiCredentialMap } from "./pi-auth-credentials.js";
 
 const PiAuthStorageClass = PiCodingAgent.AuthStorage;
@@ -44,6 +53,64 @@ function createInMemoryAuthStorageBackend(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function resolveModelsJsonProviderApiKey(value: unknown, env: NodeJS.ProcessEnv): string | null {
+  const apiKey = normalizeOptionalSecretInput(value);
+  if (!apiKey) {
+    return null;
+  }
+  if (apiKey === NON_ENV_SECRETREF_MARKER || isOAuthApiKeyMarker(apiKey)) {
+    return null;
+  }
+  if (isKnownEnvApiKeyMarker(apiKey)) {
+    return normalizeOptionalSecretInput(env[apiKey]) ?? null;
+  }
+  if (
+    apiKey === OLLAMA_LOCAL_AUTH_MARKER ||
+    apiKey === CUSTOM_LOCAL_AUTH_MARKER ||
+    apiKey === GCP_VERTEX_CREDENTIALS_MARKER
+  ) {
+    return apiKey;
+  }
+  return apiKey;
+}
+
+function resolvePiCredentialsFromModelsJson(
+  agentDir: string,
+  env: NodeJS.ProcessEnv = process.env,
+): PiCredentialMap {
+  const modelsPath = path.join(agentDir, "models.json");
+  if (!fs.existsSync(modelsPath)) {
+    return {};
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(modelsPath, "utf8")) as unknown;
+  } catch {
+    return {};
+  }
+  if (!isRecord(parsed) || !isRecord(parsed.providers)) {
+    return {};
+  }
+
+  const credentials: PiCredentialMap = {};
+  for (const [provider, config] of Object.entries(parsed.providers)) {
+    const normalizedProvider = provider.trim();
+    if (!normalizedProvider || !isRecord(config)) {
+      continue;
+    }
+    const apiKey = resolveModelsJsonProviderApiKey(config.apiKey, env);
+    if (!apiKey) {
+      continue;
+    }
+    credentials[normalizedProvider] = {
+      type: "api_key",
+      key: apiKey,
+    };
+  }
+  return credentials;
 }
 
 function scrubLegacyStaticAuthJsonEntries(pathname: string): void {
@@ -136,7 +203,10 @@ function createAuthStorage(AuthStorageLike: unknown, path: string, creds: PiCred
 
 function resolvePiCredentials(agentDir: string): PiCredentialMap {
   const store = ensureAuthProfileStore(agentDir, { allowKeychainPrompt: false });
-  return resolvePiCredentialMapFromStore(store);
+  return {
+    ...resolvePiCredentialsFromModelsJson(agentDir),
+    ...resolvePiCredentialMapFromStore(store),
+  };
 }
 
 // Compatibility helpers for pi-coding-agent 0.50+ (discover* helpers removed).

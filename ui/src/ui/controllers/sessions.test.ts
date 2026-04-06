@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { deleteSessionsAndRefresh, subscribeSessions, type SessionsState } from "./sessions.ts";
+import {
+  deleteSessionsAndRefresh,
+  loadSessions,
+  subscribeSessions,
+  type SessionsState,
+} from "./sessions.ts";
 
 type RequestFn = (method: string, params?: unknown) => Promise<unknown>;
 
@@ -118,5 +123,34 @@ describe("deleteSessionsAndRefresh", () => {
 
     expect(deleted).toEqual([]);
     expect(request).not.toHaveBeenCalled();
+  });
+});
+
+describe("loadSessions", () => {
+  it("filters session rows to the signed-in mock portal user", async () => {
+    const request = vi.fn(async () => ({
+      ts: Date.now(),
+      path: "/tmp/sessions.json",
+      count: 3,
+      defaults: {
+        modelProvider: null,
+        model: null,
+        contextTokens: null,
+      },
+      sessions: [
+        { key: "agent:portal-u1001:main", kind: "direct", updatedAt: 1 },
+        { key: "agent:portal-u1001:telegram:direct:alice", kind: "direct", updatedAt: 2 },
+        { key: "agent:portal-u1002:main", kind: "direct", updatedAt: 3 },
+      ],
+    }));
+    const state = createState(request, { mockPortalUserId: "u1001" });
+
+    await loadSessions(state);
+
+    expect(state.sessionsResult?.count).toBe(2);
+    expect(state.sessionsResult?.sessions.map((entry) => entry.key)).toEqual([
+      "agent:portal-u1001:main",
+      "agent:portal-u1001:telegram:direct:alice",
+    ]);
   });
 });

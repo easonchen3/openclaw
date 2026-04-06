@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import "../styles.css";
+import { deriveMockPortalSessionKey } from "./mock-portal-auth.ts";
 import { mountApp as mountTestApp, registerAppMountHooks } from "./test-helpers/app-mount.ts";
 
 registerAppMountHooks();
@@ -12,6 +13,12 @@ function nextFrame() {
   return new Promise<void>((resolve) => {
     requestAnimationFrame(() => resolve());
   });
+}
+
+function readStoredSettings() {
+  const scopedKey = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+    .find((key) => key?.startsWith("openclaw.control.settings.v1:"));
+  return JSON.parse(localStorage.getItem(scopedKey ?? "openclaw.control.settings.v1") ?? "{}");
 }
 
 describe("control UI routing", () => {
@@ -143,7 +150,7 @@ describe("control UI routing", () => {
     expect(headerStyles.justifyContent).toBe("center");
   });
 
-  it("resets to the main session when opening chat from sidebar navigation", async () => {
+  it("resets to the signed-in user's primary session when opening chat from sidebar navigation", async () => {
     const app = mountApp("/sessions?session=agent:main:subagent:task-123");
     await app.updateComplete;
 
@@ -153,9 +160,9 @@ describe("control UI routing", () => {
 
     await app.updateComplete;
     expect(app.tab).toBe("chat");
-    expect(app.sessionKey).toBe("main");
+    expect(app.sessionKey).toBe(deriveMockPortalSessionKey("u1001"));
     expect(window.location.pathname).toBe("/chat");
-    expect(window.location.search).toBe("?session=main");
+    expect(window.location.search).toBe(`?session=${encodeURIComponent(deriveMockPortalSessionKey("u1001"))}`);
   });
 
   it("keeps chat and nav usable on narrow viewports", async () => {
@@ -320,9 +327,7 @@ describe("control UI routing", () => {
     await app.updateComplete;
 
     expect(app.settings.token).toBe("abc123");
-    expect(JSON.parse(localStorage.getItem("openclaw.control.settings.v1") ?? "{}").token).toBe(
-      undefined,
-    );
+    expect(readStoredSettings().token).toBe(undefined);
     expect(window.location.pathname).toBe("/ui/overview");
     expect(window.location.search).toBe("");
   });
@@ -345,12 +350,10 @@ describe("control UI routing", () => {
     await app.updateComplete;
 
     expect(app.settings.token).toBe("abc123");
-    expect(JSON.parse(localStorage.getItem("openclaw.control.settings.v1") ?? "{}")).toMatchObject({
+    expect(readStoredSettings()).toMatchObject({
       gatewayUrl: "wss://gateway.example/openclaw",
     });
-    expect(JSON.parse(localStorage.getItem("openclaw.control.settings.v1") ?? "{}").token).toBe(
-      undefined,
-    );
+    expect(readStoredSettings().token).toBe(undefined);
     expect(window.location.pathname).toBe("/ui/overview");
     expect(window.location.hash).toBe("");
   });
@@ -360,9 +363,7 @@ describe("control UI routing", () => {
     await app.updateComplete;
 
     expect(app.settings.token).toBe("abc123");
-    expect(JSON.parse(localStorage.getItem("openclaw.control.settings.v1") ?? "{}").token).toBe(
-      undefined,
-    );
+    expect(readStoredSettings().token).toBe(undefined);
     expect(window.location.pathname).toBe("/ui/overview");
     expect(window.location.hash).toBe("");
   });
@@ -436,8 +437,6 @@ describe("control UI routing", () => {
     await refreshed.updateComplete;
 
     expect(refreshed.settings.token).toBe("abc123");
-    expect(JSON.parse(localStorage.getItem("openclaw.control.settings.v1") ?? "{}").token).toBe(
-      undefined,
-    );
+    expect(readStoredSettings().token).toBe(undefined);
   });
 });

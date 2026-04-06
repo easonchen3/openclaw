@@ -6,6 +6,7 @@ import {
 } from "../../../src/routing/session-key.js";
 import { t } from "../i18n/index.ts";
 import { getSafeLocalStorage } from "../local-storage.ts";
+import { resolveMockPortalUser } from "./mock-portal-auth.ts";
 import { refreshChatAvatar } from "./app-chat.ts";
 import { renderUsageTab } from "./app-render-usage-tab.ts";
 import {
@@ -304,7 +305,7 @@ export function renderApp(state: AppViewState) {
 
   // Gate: require successful gateway connection before showing the dashboard.
   // The gateway URL confirmation overlay is always rendered so URL-param flows still work.
-  if (!state.connected) {
+  if (!state.connected || !state.mockPortalUserId) {
     return html` ${renderLoginGate(state)} ${renderGatewayUrlConfirmation(state)} `;
   }
 
@@ -320,6 +321,7 @@ export function renderApp(state: AppViewState) {
   const showToolCalls = state.onboarding ? true : state.settings.chatShowToolCalls;
   const assistantAvatarUrl = resolveAssistantAvatarUrl(state);
   const chatAvatarUrl = state.chatAvatarUrl ?? assistantAvatarUrl ?? null;
+  const portalUser = resolveMockPortalUser(state.mockPortalUserId);
   const configValue =
     state.configForm ?? (state.configSnapshot?.config as Record<string, unknown> | null);
   const basePath = normalizeBasePath(state.basePath ?? "");
@@ -446,6 +448,21 @@ export function renderApp(state: AppViewState) {
             <dashboard-header .tab=${state.tab}></dashboard-header>
           </div>
           <div class="topnav-shell__actions">
+            ${
+              portalUser
+                ? html`<div class="portal-user-chip" title=${portalUser.description}>
+                    <span class="portal-user-chip__name">${portalUser.name}</span>
+                    <code class="portal-user-chip__id">${portalUser.id}</code>
+                    <button
+                      type="button"
+                      class="btn btn--sm btn--ghost"
+                      @click=${() => state.handleMockPortalLogout()}
+                    >
+                      Switch User
+                    </button>
+                  </div>`
+                : nothing
+            }
             <button
               class="topbar-search"
               @click=${() => {

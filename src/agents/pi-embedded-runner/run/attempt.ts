@@ -172,6 +172,18 @@ type PromptBuildHookRunner = {
   ) => Promise<PluginHookBeforeAgentStartResult | undefined>;
 };
 
+type EmbeddedSessionStreamFn = typeof streamSimple;
+type EmbeddedModelAuthResult =
+  | { ok: true; apiKey?: string; headers?: Record<string, string> }
+  | { ok: false; error: string };
+type EmbeddedModelRegistryAuthLike = {
+  getApiKeyAndHeaders: (model: {
+    provider?: string;
+    id?: string;
+    headers?: Record<string, string>;
+  }) => Promise<EmbeddedModelAuthResult>;
+};
+
 const SESSIONS_YIELD_INTERRUPT_CUSTOM_TYPE = "openclaw.sessions_yield_interrupt";
 const SESSIONS_YIELD_CONTEXT_CUSTOM_TYPE = "openclaw.sessions_yield";
 const SESSIONS_YIELD_ABORT_SETTLE_TIMEOUT_MS = process.env.OPENCLAW_TEST_FAST === "1" ? 250 : 2_000;
@@ -179,6 +191,74 @@ const SESSIONS_YIELD_ABORT_SETTLE_TIMEOUT_MS = process.env.OPENCLAW_TEST_FAST ==
 // Persist a hidden context reminder so the next turn knows why the runner stopped.
 export function buildSessionsYieldContextMessage(message: string): string {
   return `${message}\n\n[Context: The previous turn ended intentionally via sessions_yield while waiting for a follow-up event.]`;
+}
+
+export async function resolvePreferredEmbeddedStreamFn(params: {
+  sessionStreamFn: EmbeddedSessionStreamFn;
+  model: {
+    api?: string;
+    provider?: string;
+    baseUrl?: string;
+  };
+  provider: string;
+  config?: OpenClawConfig;
+  authStorage: {
+    getApiKey: (provider: string) => Promise<string | undefined>;
+  };
+  sessionId: string;
+  abortSignal: AbortSignal;
+}): Promise<EmbeddedSessionStreamFn> {
+  if (params.model.api === "ollama") {
+    const providerConfig = params.config?.models?.providers?.[params.model.provider ?? ""];
+    const providerBaseUrl =
+      typeof providerConfig?.baseUrl === "string" ? providerConfig.baseUrl : undefined;
+    return createConfiguredOllamaStreamFn({
+      model: params.model,
+      providerBaseUrl,
+    });
+  }
+
+  if (params.model.api === "openai-responses" && params.provider === "openai") {
+    const wsApiKey = await params.authStorage.getApiKey(params.provider);
+    if (wsApiKey) {
+      return createOpenAIWebSocketStreamFn(wsApiKey, params.sessionId, {
+        signal: params.abortSignal,
+      });
+    }
+    log.warn(`[ws-stream] no API key for provider=${params.provider}; using HTTP transport`);
+    return streamSimple;
+  }
+
+  if (params.model.provider === "anthropic-vertex") {
+    return createAnthropicVertexStreamFnForModel(params.model);
+  }
+
+  return params.sessionStreamFn;
+}
+
+export function wrapEmbeddedStreamFnWithResolvedModelAuth(
+  baseStreamFn: EmbeddedSessionStreamFn,
+  params: {
+    modelRegistry: EmbeddedModelRegistryAuthLike;
+  },
+): EmbeddedSessionStreamFn {
+  return async (model, context, options) => {
+    if (options?.apiKey) {
+      return baseStreamFn(model, context, options);
+    }
+
+    const auth = await params.modelRegistry.getApiKeyAndHeaders(model);
+    if (!auth.ok) {
+      throw new Error(auth.error);
+    }
+
+    return baseStreamFn(model, context, {
+      ...options,
+      apiKey: auth.apiKey,
+      headers:
+        auth.headers || options?.headers ? { ...auth.headers, ...options?.headers } : undefined,
+    });
+  };
 }
 
 async function waitForSessionsYieldAbortSettle(params: {
@@ -2223,36 +2303,26 @@ export async function runEmbeddedAttempt(
         workspaceDir: params.workspaceDir,
       });
 
-      // Ollama native API: bypass SDK's streamSimple and use direct /api/chat calls
-      // for reliable streaming + tool calling support (#11828).
-      if (params.model.api === "ollama") {
-        // Prioritize configured provider baseUrl so Docker/remote Ollama hosts work reliably.
-        const providerConfig = params.config?.models?.providers?.[params.model.provider];
-        const providerBaseUrl =
-          typeof providerConfig?.baseUrl === "string" ? providerConfig.baseUrl : undefined;
-        const ollamaStreamFn = createConfiguredOllamaStreamFn({
-          model: params.model,
-          providerBaseUrl,
-        });
-        activeSession.agent.streamFn = ollamaStreamFn;
-        ensureCustomApiRegistered(params.model.api, ollamaStreamFn);
-      } else if (params.model.api === "openai-responses" && params.provider === "openai") {
-        const wsApiKey = await params.authStorage.getApiKey(params.provider);
-        if (wsApiKey) {
-          activeSession.agent.streamFn = createOpenAIWebSocketStreamFn(wsApiKey, params.sessionId, {
-            signal: runAbortController.signal,
+      const selectedBaseStreamFn = await resolvePreferredEmbeddedStreamFn({
+        sessionStreamFn: activeSession.agent.streamFn,
+        model: params.model,
+        provider: params.provider,
+        config: params.config,
+        authStorage: params.authStorage,
+        sessionId: params.sessionId,
+        abortSignal: runAbortController.signal,
+      });
+      const isSpecialTransportProvider =
+        params.model.api === "ollama" ||
+        (params.model.api === "openai-responses" && params.provider === "openai") ||
+        params.model.provider === "anthropic-vertex";
+      activeSession.agent.streamFn = isSpecialTransportProvider
+        ? selectedBaseStreamFn
+        : wrapEmbeddedStreamFnWithResolvedModelAuth(selectedBaseStreamFn, {
+            modelRegistry: params.modelRegistry,
           });
-        } else {
-          log.warn(`[ws-stream] no API key for provider=${params.provider}; using HTTP transport`);
-          activeSession.agent.streamFn = streamSimple;
-        }
-      } else if (params.model.provider === "anthropic-vertex") {
-        // Anthropic Vertex AI: inject AnthropicVertex client into pi-ai's
-        // streamAnthropic for GCP IAM auth instead of Anthropic API keys.
-        activeSession.agent.streamFn = createAnthropicVertexStreamFnForModel(params.model);
-      } else {
-        // Force a stable streamFn reference so vitest can reliably mock @mariozechner/pi-ai.
-        activeSession.agent.streamFn = streamSimple;
+      if (params.model.api === "ollama") {
+        ensureCustomApiRegistered(params.model.api, selectedBaseStreamFn);
       }
 
       // Ollama with OpenAI-compatible API needs num_ctx in payload.options.

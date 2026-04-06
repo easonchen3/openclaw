@@ -2,6 +2,12 @@ import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { parseAgentSessionKey } from "../../../src/sessions/session-key-utils.js";
 import { t } from "../i18n/index.ts";
+import {
+  deriveMockPortalSessionKey,
+  describeMockPortalUser,
+  lockMockPortalSessionKey,
+  resolveMockPortalUser,
+} from "./mock-portal-auth.ts";
 import { refreshChat } from "./app-chat.ts";
 import { syncUrlWithSessionKey } from "./app-settings.ts";
 import type { AppViewState } from "./app-view-state.ts";
@@ -27,6 +33,9 @@ type SessionDefaultsSnapshot = {
 };
 
 function resolveSidebarChatSessionKey(state: AppViewState): string {
+  if (state.mockPortalUserId) {
+    return deriveMockPortalSessionKey(state.mockPortalUserId);
+  }
   const snapshot = state.hello?.snapshot as
     | { sessionDefaults?: SessionDefaultsSnapshot }
     | undefined;
@@ -137,6 +146,14 @@ function renderCronFilterIcon(hiddenCount: number) {
 export function renderChatSessionSelect(state: AppViewState) {
   const sessionGroups = resolveSessionOptionGroups(state, state.sessionKey, state.sessionsResult);
   const modelSelect = renderChatModelSelect(state);
+  if (state.mockPortalUserId) {
+    return html`
+      <div class="chat-controls__session-row">
+        <div class="pill chat-controls__session-lock">${describeMockPortalUser(state.mockPortalUserId)}</div>
+        ${modelSelect}
+      </div>
+    `;
+  }
   return html`
     <div class="chat-controls__session-row">
       <label class="field chat-controls__session">
@@ -409,29 +426,33 @@ export function renderChatMobileToggle(state: AppViewState) {
         e.stopPropagation();
       }}>
         <div class="chat-controls">
-          <label class="field chat-controls__session">
-            <select
-              .value=${state.sessionKey}
-              @change=${(e: Event) => {
-                const next = (e.target as HTMLSelectElement).value;
-                switchChatSession(state, next);
-              }}
-            >
-              ${sessionGroups.map(
-                (group) => html`
-                  <optgroup label=${group.label}>
-                    ${group.options.map(
-                      (opt) => html`
-                        <option value=${opt.key} title=${opt.title}>
-                          ${opt.label}
-                        </option>
+          ${
+            state.mockPortalUserId
+              ? html`<div class="pill chat-controls__session-lock">${describeMockPortalUser(state.mockPortalUserId)}</div>`
+              : html`<label class="field chat-controls__session">
+                  <select
+                    .value=${state.sessionKey}
+                    @change=${(e: Event) => {
+                      const next = (e.target as HTMLSelectElement).value;
+                      switchChatSession(state, next);
+                    }}
+                  >
+                    ${sessionGroups.map(
+                      (group) => html`
+                        <optgroup label=${group.label}>
+                          ${group.options.map(
+                            (opt) => html`
+                              <option value=${opt.key} title=${opt.title}>
+                                ${opt.label}
+                              </option>
+                            `,
+                          )}
+                        </optgroup>
                       `,
                     )}
-                  </optgroup>
-                `,
-              )}
-            </select>
-          </label>
+                  </select>
+                </label>`
+          }
           <div class="chat-controls__thinking">
             <button
               class="btn btn--sm btn--icon ${showThinking ? "active" : ""}"
@@ -489,7 +510,11 @@ export function renderChatMobileToggle(state: AppViewState) {
 }
 
 export function switchChatSession(state: AppViewState, nextSessionKey: string) {
-  state.sessionKey = nextSessionKey;
+  const lockedSessionKey = lockMockPortalSessionKey(nextSessionKey, state.mockPortalUserId);
+  if (state.sessionKey === lockedSessionKey) {
+    return;
+  }
+  state.sessionKey = lockedSessionKey;
   state.chatMessage = "";
   state.chatStream = null;
   state.chatStreamMessage = null;
@@ -501,13 +526,13 @@ export function switchChatSession(state: AppViewState, nextSessionKey: string) {
   (state as unknown as OpenClawApp).resetChatScroll();
   state.applySettings({
     ...state.settings,
-    sessionKey: nextSessionKey,
-    lastActiveSessionKey: nextSessionKey,
+    sessionKey: lockedSessionKey,
+    lastActiveSessionKey: lockedSessionKey,
   });
   void state.loadAssistantIdentity();
   syncUrlWithSessionKey(
     state as unknown as Parameters<typeof syncUrlWithSessionKey>[0],
-    nextSessionKey,
+    lockedSessionKey,
     true,
   );
   void loadChatHistory(state as unknown as ChatState);
@@ -792,6 +817,23 @@ export function resolveSessionOptionGroups(
   sessionKey: string,
   sessions: SessionsListResult | null,
 ): SessionOptionGroup[] {
+  const portalUser = resolveMockPortalUser(state.mockPortalUserId);
+  if (portalUser) {
+    return [
+      {
+        id: `portal:${portalUser.id}`,
+        label: "Your Session",
+        options: [
+          {
+            key: lockMockPortalSessionKey(sessionKey, portalUser.id),
+            label: "Primary Session",
+            scopeLabel: "main",
+            title: lockMockPortalSessionKey(sessionKey, portalUser.id),
+          },
+        ],
+      },
+    ];
+  }
   const rows = sessions?.sessions ?? [];
   const hideCron = state.sessionsHideCron ?? true;
   const byKey = new Map<string, SessionsListResult["sessions"][number]>();

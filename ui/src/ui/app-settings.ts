@@ -31,6 +31,7 @@ import {
   tabFromPath,
   type Tab,
 } from "./navigation.ts";
+import { lockMockPortalSessionKey } from "./mock-portal-auth.ts";
 import { saveSettings, type UiSettings } from "./storage.ts";
 import { startThemeTransition, type ThemeTransitionContext } from "./theme-transition.ts";
 import { resolveTheme, type ResolvedTheme, type ThemeMode, type ThemeName } from "./theme.ts";
@@ -58,12 +59,25 @@ type SettingsHost = {
   pendingGatewayUrl?: string | null;
   systemThemeCleanup?: (() => void) | null;
   pendingGatewayToken?: string | null;
+  mockPortalUserId?: string | null;
 };
 
+function resolveLockedSessionKey(
+  sessionKey: string | undefined | null,
+  mockPortalUserId: string | null | undefined,
+): string {
+  return lockMockPortalSessionKey(sessionKey, mockPortalUserId ?? null);
+}
+
 export function applySettings(host: SettingsHost, next: UiSettings) {
+  const lockedSessionKey = resolveLockedSessionKey(next.sessionKey, host.mockPortalUserId);
   const normalized = {
     ...next,
-    lastActiveSessionKey: next.lastActiveSessionKey?.trim() || next.sessionKey.trim() || "main",
+    sessionKey: lockedSessionKey,
+    lastActiveSessionKey: resolveLockedSessionKey(
+      next.lastActiveSessionKey?.trim() || lockedSessionKey,
+      host.mockPortalUserId,
+    ),
   };
   host.settings = normalized;
   saveSettings(normalized);
@@ -126,11 +140,12 @@ export function applySettingsFromUrl(host: SettingsHost) {
   }
 
   if (shouldResetSessionForToken) {
-    host.sessionKey = "main";
+    const resetSessionKey = resolveLockedSessionKey("main", host.mockPortalUserId);
+    host.sessionKey = resetSessionKey;
     applySettings(host, {
       ...host.settings,
-      sessionKey: "main",
-      lastActiveSessionKey: "main",
+      sessionKey: resetSessionKey,
+      lastActiveSessionKey: resetSessionKey,
     });
   }
 
@@ -142,7 +157,7 @@ export function applySettingsFromUrl(host: SettingsHost) {
   }
 
   if (sessionRaw != null) {
-    const session = sessionRaw.trim();
+    const session = resolveLockedSessionKey(sessionRaw.trim(), host.mockPortalUserId);
     if (session) {
       host.sessionKey = session;
       applySettings(host, {
@@ -404,11 +419,12 @@ export function onPopState(host: SettingsHost) {
   const url = new URL(window.location.href);
   const session = url.searchParams.get("session")?.trim();
   if (session) {
-    host.sessionKey = session;
+    const lockedSessionKey = resolveLockedSessionKey(session, host.mockPortalUserId);
+    host.sessionKey = lockedSessionKey;
     applySettings(host, {
       ...host.settings,
-      sessionKey: session,
-      lastActiveSessionKey: session,
+      sessionKey: lockedSessionKey,
+      lastActiveSessionKey: lockedSessionKey,
     });
   }
 

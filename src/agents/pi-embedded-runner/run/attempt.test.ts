@@ -7,6 +7,8 @@ import {
   buildAfterTurnRuntimeContext,
   buildSessionsYieldContextMessage,
   composeSystemPromptWithHookContext,
+  resolvePreferredEmbeddedStreamFn,
+  wrapEmbeddedStreamFnWithResolvedModelAuth,
   persistSessionsYieldContextMessage,
   isOllamaCompatProvider,
   prependSystemPromptAddition,
@@ -235,6 +237,69 @@ describe("sessions_yield helpers", () => {
     expect(activeSession.sessionManager.byId.has("aborted")).toBe(false);
     expect(activeSession.sessionManager.leafId).toBe("session-root");
     expect(rewriteFile).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("resolvePreferredEmbeddedStreamFn", () => {
+  it("preserves the session auth-aware stream wrapper for standard providers", async () => {
+    const sessionStreamFn = vi.fn();
+    const authStorage = {
+      getApiKey: vi.fn(async () => undefined),
+    };
+
+    const resolved = await resolvePreferredEmbeddedStreamFn({
+      sessionStreamFn: sessionStreamFn as never,
+      model: {
+        api: "openai-completions",
+        provider: "deepseek",
+        baseUrl: "https://api.deepseek.com",
+      },
+      provider: "deepseek",
+      authStorage,
+      sessionId: "session-1",
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(resolved).toBe(sessionStreamFn);
+    expect(authStorage.getApiKey).not.toHaveBeenCalled();
+  });
+});
+
+describe("wrapEmbeddedStreamFnWithResolvedModelAuth", () => {
+  it("injects resolved apiKey and headers for providers that rely on streamSimple auth options", async () => {
+    const baseStreamFn = vi.fn(async () => createFakeStream({ events: [], resultMessage: {} }));
+    const wrapped = wrapEmbeddedStreamFnWithResolvedModelAuth(baseStreamFn as never, {
+      modelRegistry: {
+        getApiKeyAndHeaders: vi.fn(async () => ({
+          ok: true,
+          apiKey: "sk-runtime",
+          headers: { "x-provider": "deepseek" },
+        })),
+      },
+    });
+
+    await wrapped(
+      {
+        provider: "deepseek",
+        id: "deepseek-reasoner",
+        baseUrl: "https://api.deepseek.com",
+      } as never,
+      { messages: [] } as never,
+      { headers: { "x-client": "openclaw" } } as never,
+    );
+
+    expect(baseStreamFn).toHaveBeenCalledTimes(1);
+    expect(baseStreamFn).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        apiKey: "sk-runtime",
+        headers: {
+          "x-provider": "deepseek",
+          "x-client": "openclaw",
+        },
+      }),
+    );
   });
 });
 

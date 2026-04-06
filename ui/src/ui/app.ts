@@ -61,11 +61,19 @@ import {
   refreshVisibleToolsEffectiveForCurrentSession as refreshVisibleToolsEffectiveForCurrentSessionInternal,
 } from "./controllers/agents.ts";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity.ts";
+import { loadChatHistory } from "./controllers/chat.ts";
 import type { DevicePairingList } from "./controllers/devices.ts";
 import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
 import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "./controllers/exec-approvals.ts";
+import { loadSessions } from "./controllers/sessions.ts";
 import type { SkillMessage } from "./controllers/skills.ts";
 import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway.ts";
+import {
+  deriveMockPortalSessionKey,
+  loadMockPortalUserId,
+  resolveMockPortalUser,
+  saveMockPortalUserId,
+} from "./mock-portal-auth.ts";
 import type { Tab } from "./navigation.ts";
 import { loadSettings, type UiSettings } from "./storage.ts";
 import { VALID_THEME_NAMES, type ResolvedTheme, type ThemeMode, type ThemeName } from "./theme.ts";
@@ -132,6 +140,9 @@ export class OpenClawApp extends LitElement {
   @state() password = "";
   @state() loginShowGatewayToken = false;
   @state() loginShowGatewayPassword = false;
+  @state() mockPortalUserId = loadMockPortalUserId();
+  @state() mockPortalLoginInput = "";
+  @state() mockPortalLoginError: string | null = null;
   @state() tab: Tab = "chat";
   @state() onboarding = resolveOnboardingMode();
   @state() connected = false;
@@ -572,6 +583,74 @@ export class OpenClawApp extends LitElement {
 
   async loadAssistantIdentity() {
     await loadAssistantIdentityInternal(this);
+  }
+
+  handleMockPortalLogin(userId?: string) {
+    const resolved = resolveMockPortalUser(userId ?? this.mockPortalLoginInput);
+    if (!resolved) {
+      this.mockPortalLoginError = "Unknown user ID. Try u1001, u1002, or admin01.";
+      return;
+    }
+    this.mockPortalLoginError = null;
+    this.mockPortalLoginInput = resolved.id;
+    saveMockPortalUserId(resolved.id);
+    this.mockPortalUserId = resolved.id;
+    const nextSessionKey = deriveMockPortalSessionKey(resolved.id);
+    const scopedSettings = loadSettings();
+    const nextSettings: UiSettings = {
+      ...scopedSettings,
+      gatewayUrl: this.settings.gatewayUrl,
+      token: this.settings.token,
+      sessionKey: nextSessionKey,
+      lastActiveSessionKey: nextSessionKey,
+    };
+    this.sessionKey = nextSessionKey;
+    this.chatMessage = "";
+    this.chatMessages = [];
+    this.chatToolMessages = [];
+    this.chatStream = null;
+    this.chatStreamMessage = null;
+    this.chatRunId = null;
+    this.chatQueue = [];
+    this.sessionsResult = null;
+    this.sessionsError = null;
+    this.chatThinkingLevel = null;
+    this.resetToolStream();
+    this.resetChatScroll();
+    this.applySettings(nextSettings);
+    if (!this.connected) {
+      return;
+    }
+    void this.loadAssistantIdentity();
+    void loadChatHistory(this);
+    void loadSessions(this);
+  }
+
+  handleMockPortalLogout() {
+    saveMockPortalUserId(null);
+    this.mockPortalUserId = null;
+    this.mockPortalLoginError = null;
+    this.mockPortalLoginInput = "";
+    const scopedSettings = loadSettings();
+    const nextSettings: UiSettings = {
+      ...scopedSettings,
+      gatewayUrl: this.settings.gatewayUrl,
+      token: this.settings.token,
+    };
+    this.sessionKey = nextSettings.sessionKey;
+    this.chatMessage = "";
+    this.chatMessages = [];
+    this.chatToolMessages = [];
+    this.chatStream = null;
+    this.chatStreamMessage = null;
+    this.chatRunId = null;
+    this.chatQueue = [];
+    this.sessionsResult = null;
+    this.sessionsError = null;
+    this.chatThinkingLevel = null;
+    this.resetToolStream();
+    this.resetChatScroll();
+    this.applySettings(nextSettings);
   }
 
   applySettings(next: UiSettings) {

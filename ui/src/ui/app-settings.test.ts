@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { deriveMockPortalSessionKey, saveMockPortalUserId } from "./mock-portal-auth.ts";
 import {
   applyResolvedTheme,
   applySettings,
@@ -284,6 +285,7 @@ describe("applySettingsFromUrl", () => {
   });
 
   afterEach(() => {
+    saveMockPortalUserId(null);
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -387,5 +389,49 @@ describe("applySettingsFromUrl", () => {
     expect(host.settings.lastActiveSessionKey).toBe("agent:test_old:main");
     expect(host.pendingGatewayUrl).toBe("ws://gateway-b.example:18789");
     expect(host.pendingGatewayToken).toBe("test-token");
+  });
+
+  it("locks URL session resets to the signed-in user's primary session", () => {
+    saveMockPortalUserId("u1002");
+    setTestWindowUrl("https://control.example/chat#token=test-token");
+    const host = createHost("chat") as SettingsHost & { mockPortalUserId?: string | null };
+    host.mockPortalUserId = "u1002";
+    host.settings = {
+      ...host.settings,
+      gatewayUrl: "ws://localhost:18789",
+      token: "",
+      sessionKey: "agent:test_old:main",
+      lastActiveSessionKey: "agent:test_old:main",
+    };
+    host.sessionKey = "agent:test_old:main";
+
+    applySettingsFromUrl(host);
+
+    expect(host.sessionKey).toBe(deriveMockPortalSessionKey("u1002"));
+    expect(host.settings.sessionKey).toBe(deriveMockPortalSessionKey("u1002"));
+    expect(host.settings.lastActiveSessionKey).toBe(deriveMockPortalSessionKey("u1002"));
+  });
+
+  it("ignores explicit session overrides from the URL for signed-in mock users", () => {
+    saveMockPortalUserId("admin01");
+    setTestWindowUrl(
+      "https://control.example/chat?session=agent%3Atest_new%3Amain#token=test-token",
+    );
+    const host = createHost("chat") as SettingsHost & { mockPortalUserId?: string | null };
+    host.mockPortalUserId = "admin01";
+    host.settings = {
+      ...host.settings,
+      gatewayUrl: "ws://localhost:18789",
+      token: "",
+      sessionKey: "agent:test_old:main",
+      lastActiveSessionKey: "agent:test_old:main",
+    };
+    host.sessionKey = "agent:test_old:main";
+
+    applySettingsFromUrl(host);
+
+    expect(host.sessionKey).toBe(deriveMockPortalSessionKey("admin01"));
+    expect(host.settings.sessionKey).toBe(deriveMockPortalSessionKey("admin01"));
+    expect(host.settings.lastActiveSessionKey).toBe(deriveMockPortalSessionKey("admin01"));
   });
 });

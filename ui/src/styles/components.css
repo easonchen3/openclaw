@@ -59,6 +59,97 @@
   gap: 12px;
 }
 
+.login-gate__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-elevated) 82%, transparent);
+}
+
+.login-gate__section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.login-gate__section-title {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text-strong);
+}
+
+.login-gate__section-subtitle {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.login-gate__user-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 10px;
+}
+
+.login-gate__user-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--duration-fast) ease,
+    transform var(--duration-fast) ease,
+    background var(--duration-fast) ease;
+}
+
+.login-gate__user-option:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.login-gate__user-option--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--card));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.login-gate__user-name {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text-strong);
+}
+
+.login-gate__user-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.login-gate__user-description {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.login-gate__mock-login-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.login-gate__mock-login-row input {
+  flex: 1;
+}
+
 .login-gate__secret-row {
   display: flex;
   align-items: center;

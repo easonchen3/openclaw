@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { deriveMockPortalSessionKey, saveMockPortalUserId } from "./mock-portal-auth.ts";
 
 function createStorageMock(): Storage {
   const store = new Map<string, string>();
@@ -71,6 +72,7 @@ describe("loadSettings default gateway URL derivation", () => {
   });
 
   afterEach(() => {
+    saveMockPortalUserId(null);
     vi.restoreAllMocks();
     setControlUiBasePath(undefined);
     vi.unstubAllGlobals();
@@ -390,6 +392,89 @@ describe("loadSettings default gateway URL derivation", () => {
       gatewayUrl: gwUrl,
       sessionKey: "agent:test_old:main",
       lastActiveSessionKey: "agent:test_old:main",
+    });
+  });
+
+  it("defaults signed-in mock users to their synthetic main session", async () => {
+    saveMockPortalUserId("u1001");
+    setTestLocation({
+      protocol: "https:",
+      host: "gateway-a.example:8443",
+      pathname: "/",
+    });
+
+    const gwUrl = expectedGatewayUrl("");
+    const { loadSettings } = await import("./storage.ts");
+
+    expect(loadSettings()).toMatchObject({
+      gatewayUrl: gwUrl,
+      sessionKey: deriveMockPortalSessionKey("u1001"),
+      lastActiveSessionKey: deriveMockPortalSessionKey("u1001"),
+    });
+  });
+
+  it("scopes persisted settings separately for each signed-in mock user", async () => {
+    setTestLocation({
+      protocol: "https:",
+      host: "gateway.example:8443",
+      pathname: "/",
+    });
+
+    const gwUrl = expectedGatewayUrl("");
+    const { loadSettings, saveSettings } = await import("./storage.ts");
+
+    saveMockPortalUserId("u1001");
+    saveSettings({
+      gatewayUrl: gwUrl,
+      token: "",
+      sessionKey: "agent:someone-else:main",
+      lastActiveSessionKey: "agent:someone-else:main",
+      theme: "claw",
+      themeMode: "system",
+      chatFocusMode: false,
+      chatShowThinking: true,
+      chatShowToolCalls: true,
+      splitRatio: 0.6,
+      navCollapsed: false,
+      navWidth: 220,
+      navGroupsCollapsed: {},
+      borderRadius: 50,
+    });
+
+    saveMockPortalUserId("u1002");
+    saveSettings({
+      gatewayUrl: gwUrl,
+      token: "",
+      sessionKey: "agent:another-user:main",
+      lastActiveSessionKey: "agent:another-user:main",
+      theme: "dash",
+      themeMode: "light",
+      chatFocusMode: false,
+      chatShowThinking: false,
+      chatShowToolCalls: true,
+      splitRatio: 0.6,
+      navCollapsed: false,
+      navWidth: 220,
+      navGroupsCollapsed: {},
+      borderRadius: 50,
+    });
+
+    saveMockPortalUserId("u1001");
+    expect(loadSettings()).toMatchObject({
+      gatewayUrl: gwUrl,
+      sessionKey: deriveMockPortalSessionKey("u1001"),
+      lastActiveSessionKey: deriveMockPortalSessionKey("u1001"),
+      theme: "claw",
+    });
+
+    saveMockPortalUserId("u1002");
+    expect(loadSettings()).toMatchObject({
+      gatewayUrl: gwUrl,
+      sessionKey: deriveMockPortalSessionKey("u1002"),
+      lastActiveSessionKey: deriveMockPortalSessionKey("u1002"),
+      theme: "dash",
+      themeMode: "light",
+      chatShowThinking: false,
     });
   });
 

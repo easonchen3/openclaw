@@ -57,6 +57,10 @@ async function readLegacyAuthJson(agentDir: string): Promise<Record<string, unkn
   >;
 }
 
+async function writeModelsJson(agentDir: string, content: unknown): Promise<void> {
+  await fs.writeFile(path.join(agentDir, "models.json"), JSON.stringify(content, null, 2));
+}
+
 describe("discoverAuthStorage", () => {
   it("loads runtime credentials from auth-profiles without writing auth.json", async () => {
     await withAgentDir(async (agentDir) => {
@@ -145,6 +149,50 @@ describe("discoverAuthStorage", () => {
           delete process.env.OPENCLAW_AUTH_STORE_READONLY;
         } else {
           process.env.OPENCLAW_AUTH_STORE_READONLY = previous;
+        }
+      }
+    });
+  });
+
+  it("loads plaintext provider keys from models.json when auth-profiles are absent", async () => {
+    await withAgentDir(async (agentDir) => {
+      await writeModelsJson(agentDir, {
+        providers: {
+          deepseek: {
+            apiKey: "sk-deepseek-runtime",
+          },
+        },
+      });
+
+      const authStorage = discoverAuthStorage(agentDir);
+
+      expect(authStorage.hasAuth("deepseek")).toBe(true);
+      await expect(authStorage.getApiKey("deepseek")).resolves.toBe("sk-deepseek-runtime");
+    });
+  });
+
+  it("resolves models.json env-var markers to live env values", async () => {
+    await withAgentDir(async (agentDir) => {
+      const previous = process.env.DEEPSEEK_API_KEY;
+      process.env.DEEPSEEK_API_KEY = "sk-deepseek-env";
+      try {
+        await writeModelsJson(agentDir, {
+          providers: {
+            deepseek: {
+              apiKey: "DEEPSEEK_API_KEY",
+            },
+          },
+        });
+
+        const authStorage = discoverAuthStorage(agentDir);
+
+        expect(authStorage.hasAuth("deepseek")).toBe(true);
+        await expect(authStorage.getApiKey("deepseek")).resolves.toBe("sk-deepseek-env");
+      } finally {
+        if (previous === undefined) {
+          delete process.env.DEEPSEEK_API_KEY;
+        } else {
+          process.env.DEEPSEEK_API_KEY = previous;
         }
       }
     });

@@ -4,10 +4,6 @@ const LEGACY_TOKEN_SESSION_KEY = "openclaw.control.token.v1";
 const TOKEN_SESSION_KEY_PREFIX = "openclaw.control.token.v1:";
 const MAX_SCOPED_SESSION_ENTRIES = 10;
 
-function settingsKeyForGateway(gatewayUrl: string): string {
-  return `${SETTINGS_KEY_PREFIX}${normalizeGatewayTokenScope(gatewayUrl)}`;
-}
-
 type ScopedSessionSelection = {
   sessionKey: string;
   lastActiveSessionKey: string;
@@ -22,6 +18,11 @@ type PersistedUiSettings = Omit<UiSettings, "token" | "sessionKey" | "lastActive
 
 import { isSupportedLocale } from "../i18n/index.ts";
 import { getSafeLocalStorage } from "../local-storage.ts";
+import {
+  deriveMockPortalSessionKey,
+  loadMockPortalUserId,
+  lockMockPortalSessionKey,
+} from "./mock-portal-auth.ts";
 import { inferBasePathFromPathname, normalizeBasePath } from "./navigation.ts";
 import { parseThemeSelection, type ThemeMode, type ThemeName } from "./theme.ts";
 
@@ -121,6 +122,29 @@ function tokenSessionKeyForGateway(gatewayUrl: string): string {
   return `${TOKEN_SESSION_KEY_PREFIX}${normalizeGatewayTokenScope(gatewayUrl)}`;
 }
 
+function resolveSettingsScopeSuffix(mockPortalUserId: string | null): string {
+  return mockPortalUserId ? `::user:${mockPortalUserId}` : "";
+}
+
+function settingsKeyForGateway(gatewayUrl: string, mockPortalUserId: string | null): string {
+  return `${SETTINGS_KEY_PREFIX}${normalizeGatewayTokenScope(gatewayUrl)}${resolveSettingsScopeSuffix(mockPortalUserId)}`;
+}
+
+function lockScopedSessionSelection(
+  selection: ScopedSessionSelection,
+  mockPortalUserId: string | null,
+): ScopedSessionSelection {
+  const sessionKey = lockMockPortalSessionKey(selection.sessionKey, mockPortalUserId);
+  const lastActiveSessionKey = lockMockPortalSessionKey(
+    selection.lastActiveSessionKey || sessionKey,
+    mockPortalUserId,
+  );
+  return {
+    sessionKey,
+    lastActiveSessionKey,
+  };
+}
+
 function resolveScopedSessionSelection(
   gatewayUrl: string,
   parsed: PersistedUiSettings,
@@ -192,12 +216,14 @@ function persistSessionToken(gatewayUrl: string, token: string) {
 export function loadSettings(): UiSettings {
   const { pageUrl: pageDerivedUrl, effectiveUrl: defaultUrl } = deriveDefaultGatewayUrl();
   const storage = getSafeLocalStorage();
+  const mockPortalUserId = loadMockPortalUserId();
+  const defaultSessionKey = mockPortalUserId ? deriveMockPortalSessionKey(mockPortalUserId) : "main";
 
   const defaults: UiSettings = {
     gatewayUrl: defaultUrl,
     token: loadSessionToken(defaultUrl),
-    sessionKey: "main",
-    lastActiveSessionKey: "main",
+    sessionKey: defaultSessionKey,
+    lastActiveSessionKey: defaultSessionKey,
     theme: "claw",
     themeMode: "system",
     chatFocusMode: false,
@@ -212,10 +238,12 @@ export function loadSettings(): UiSettings {
 
   try {
     // First check for legacy key (no scope), then check for scoped key
-    const scopedKey = settingsKeyForGateway(defaults.gatewayUrl);
+    const scopedKey = settingsKeyForGateway(defaults.gatewayUrl, mockPortalUserId);
+    const guestScopedKey = settingsKeyForGateway(defaults.gatewayUrl, null);
     const raw =
       storage?.getItem(scopedKey) ??
-      storage?.getItem(SETTINGS_KEY_PREFIX + "default") ??
+      (mockPortalUserId ? storage?.getItem(guestScopedKey) : null) ??
+      storage?.getItem(settingsKeyForGateway("default", null)) ??
       storage?.getItem(LEGACY_SETTINGS_KEY);
     if (!raw) {
       return defaults;
@@ -226,7 +254,10 @@ export function loadSettings(): UiSettings {
         ? parsed.gatewayUrl.trim()
         : defaults.gatewayUrl;
     const gatewayUrl = parsedGatewayUrl === pageDerivedUrl ? defaultUrl : parsedGatewayUrl;
-    const scopedSessionSelection = resolveScopedSessionSelection(gatewayUrl, parsed, defaults);
+    const scopedSessionSelection = lockScopedSessionSelection(
+      resolveScopedSessionSelection(gatewayUrl, parsed, defaults),
+      mockPortalUserId,
+    );
     const { theme, mode } = parseThemeSelection(
       (parsed as { theme?: unknown }).theme,
       (parsed as { themeMode?: unknown }).themeMode,
@@ -287,16 +318,27 @@ export function saveSettings(next: UiSettings) {
 }
 
 function persistSettings(next: UiSettings) {
-  persistSessionToken(next.gatewayUrl, next.token);
+  const mockPortalUserId = loadMockPortalUserId();
+  const lockedNext: UiSettings = {
+    ...next,
+    sessionKey: lockMockPortalSessionKey(next.sessionKey, mockPortalUserId),
+    lastActiveSessionKey: lockMockPortalSessionKey(
+      next.lastActiveSessionKey || next.sessionKey,
+      mockPortalUserId,
+    ),
+  };
+  persistSessionToken(lockedNext.gatewayUrl, lockedNext.token);
   const storage = getSafeLocalStorage();
-  const scope = normalizeGatewayTokenScope(next.gatewayUrl);
-  const scopedKey = settingsKeyForGateway(next.gatewayUrl);
+  const scope = normalizeGatewayTokenScope(lockedNext.gatewayUrl);
+  const scopedKey = settingsKeyForGateway(lockedNext.gatewayUrl, mockPortalUserId);
+  const guestScopedKey = settingsKeyForGateway(lockedNext.gatewayUrl, null);
   let existingSessionsByGateway: Record<string, ScopedSessionSelection> = {};
   try {
     // Try to migrate from legacy key or other scopes
     const raw =
       storage?.getItem(scopedKey) ??
-      storage?.getItem(SETTINGS_KEY_PREFIX + "default") ??
+      (mockPortalUserId ? storage?.getItem(guestScopedKey) : null) ??
+      storage?.getItem(settingsKeyForGateway("default", null)) ??
       storage?.getItem("openclaw.control.settings.v1");
     if (raw) {
       const parsed = JSON.parse(raw) as PersistedUiSettings;
@@ -313,31 +355,33 @@ function persistSettings(next: UiSettings) {
       [
         scope,
         {
-          sessionKey: next.sessionKey,
-          lastActiveSessionKey: next.lastActiveSessionKey,
+          sessionKey: lockedNext.sessionKey,
+          lastActiveSessionKey: lockedNext.lastActiveSessionKey,
         },
       ],
     ].slice(-MAX_SCOPED_SESSION_ENTRIES),
   );
   const persisted: PersistedUiSettings = {
-    gatewayUrl: next.gatewayUrl,
-    theme: next.theme,
-    themeMode: next.themeMode,
-    chatFocusMode: next.chatFocusMode,
-    chatShowThinking: next.chatShowThinking,
-    chatShowToolCalls: next.chatShowToolCalls,
-    splitRatio: next.splitRatio,
-    navCollapsed: next.navCollapsed,
-    navWidth: next.navWidth,
-    navGroupsCollapsed: next.navGroupsCollapsed,
-    borderRadius: next.borderRadius,
+    gatewayUrl: lockedNext.gatewayUrl,
+    theme: lockedNext.theme,
+    themeMode: lockedNext.themeMode,
+    chatFocusMode: lockedNext.chatFocusMode,
+    chatShowThinking: lockedNext.chatShowThinking,
+    chatShowToolCalls: lockedNext.chatShowToolCalls,
+    splitRatio: lockedNext.splitRatio,
+    navCollapsed: lockedNext.navCollapsed,
+    navWidth: lockedNext.navWidth,
+    navGroupsCollapsed: lockedNext.navGroupsCollapsed,
+    borderRadius: lockedNext.borderRadius,
     sessionsByGateway,
-    ...(next.locale ? { locale: next.locale } : {}),
+    ...(lockedNext.locale ? { locale: lockedNext.locale } : {}),
   };
   const serialized = JSON.stringify(persisted);
   try {
     storage?.setItem(scopedKey, serialized);
-    storage?.setItem(LEGACY_SETTINGS_KEY, serialized);
+    if (!mockPortalUserId) {
+      storage?.setItem(LEGACY_SETTINGS_KEY, serialized);
+    }
   } catch {
     // best-effort — quota exceeded or security restrictions should not
     // prevent in-memory settings and visual updates from being applied

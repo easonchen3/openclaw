@@ -1,5 +1,6 @@
 import { toNumber } from "../format.ts";
 import type { GatewayBrowserClient } from "../gateway.ts";
+import { filterSessionsForMockPortalUser } from "../mock-portal-auth.ts";
 import type { SessionsListResult } from "../types.ts";
 import {
   formatMissingOperatorReadScopeMessage,
@@ -16,6 +17,7 @@ export type SessionsState = {
   sessionsFilterLimit: string;
   sessionsIncludeGlobal: boolean;
   sessionsIncludeUnknown: boolean;
+  mockPortalUserId?: string | null;
 };
 
 export async function subscribeSessions(state: SessionsState) {
@@ -63,7 +65,7 @@ export async function loadSessions(
     }
     const res = await state.client.request<SessionsListResult | undefined>("sessions.list", params);
     if (res) {
-      state.sessionsResult = res;
+      state.sessionsResult = filterSessionsForMockPortalUser(res, state.mockPortalUserId ?? null);
     }
   } catch (err) {
     if (isMissingOperatorReadScopeError(err)) {

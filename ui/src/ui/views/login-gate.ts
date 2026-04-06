@@ -2,12 +2,15 @@ import { html } from "lit";
 import { t } from "../../i18n/index.ts";
 import type { AppViewState } from "../app-view-state.ts";
 import { icons } from "../icons.ts";
+import { listMockPortalUsers, resolveMockPortalUser } from "../mock-portal-auth.ts";
 import { normalizeBasePath } from "../navigation.ts";
 import { agentLogoUrl } from "./agents-utils.ts";
 
 export function renderLoginGate(state: AppViewState) {
   const basePath = normalizeBasePath(state.basePath ?? "");
   const faviconSrc = agentLogoUrl(basePath);
+  const portalUsers = listMockPortalUsers();
+  const currentPortalUser = resolveMockPortalUser(state.mockPortalUserId);
 
   return html`
     <div class="login-gate">
@@ -18,6 +21,80 @@ export function renderLoginGate(state: AppViewState) {
           <div class="login-gate__sub">${t("login.subtitle")}</div>
         </div>
         <div class="login-gate__form">
+          <div class="login-gate__section">
+            <div class="login-gate__section-header">
+              <div class="login-gate__section-title">Mock User Login</div>
+              <div class="login-gate__section-subtitle">
+                Choose one built-in user ID to simulate portal login and isolate the chat session.
+              </div>
+            </div>
+            ${
+              currentPortalUser
+                ? html`<div class="callout success">
+                    <div><strong>${currentPortalUser.name}</strong> is signed in as <code>${currentPortalUser.id}</code>.</div>
+                    <div style="margin-top: 6px;">${currentPortalUser.description}</div>
+                  </div>`
+                : ""
+            }
+            <div class="login-gate__user-grid">
+              ${portalUsers.map(
+                (user) => html`
+                  <button
+                    type="button"
+                    class="login-gate__user-option ${state.mockPortalUserId === user.id ? "login-gate__user-option--active" : ""}"
+                    @click=${() => state.handleMockPortalLogin(user.id)}
+                  >
+                    <span class="login-gate__user-name">${user.name}</span>
+                    <span class="login-gate__user-id">${user.id}</span>
+                    <span class="login-gate__user-description">${user.description}</span>
+                  </button>
+                `,
+              )}
+            </div>
+            <label class="field">
+              <span>User ID</span>
+              <div class="login-gate__mock-login-row">
+                <input
+                  .value=${state.mockPortalLoginInput}
+                  @input=${(e: Event) => {
+                    state.mockPortalLoginInput = (e.target as HTMLInputElement).value;
+                    state.mockPortalLoginError = null;
+                  }}
+                  placeholder="u1001"
+                  @keydown=${(e: KeyboardEvent) => {
+                    if (e.key === "Enter") {
+                      state.handleMockPortalLogin();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  class="btn primary"
+                  @click=${() => state.handleMockPortalLogin()}
+                >
+                  ${currentPortalUser ? "Switch User" : "Sign In"}
+                </button>
+                ${
+                  currentPortalUser
+                    ? html`<button
+                        type="button"
+                        class="btn"
+                        @click=${() => state.handleMockPortalLogout()}
+                      >
+                        Log Out
+                      </button>`
+                    : ""
+                }
+              </div>
+            </label>
+            ${
+              state.mockPortalLoginError
+                ? html`<div class="callout danger">
+                    <div>${state.mockPortalLoginError}</div>
+                  </div>`
+                : ""
+            }
+          </div>
           <label class="field">
             <span>${t("overview.access.wsUrl")}</span>
             <input
@@ -97,6 +174,7 @@ export function renderLoginGate(state: AppViewState) {
           </label>
           <button
             class="btn primary login-gate__connect"
+            ?disabled=${!state.mockPortalUserId}
             @click=${() => state.connect()}
           >
             ${t("common.connect")}

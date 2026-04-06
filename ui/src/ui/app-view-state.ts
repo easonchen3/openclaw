@@ -43,6 +43,9 @@ export type AppViewState = {
   password: string;
   loginShowGatewayToken: boolean;
   loginShowGatewayPassword: boolean;
+  mockPortalUserId: string | null;
+  mockPortalLoginInput: string;
+  mockPortalLoginError: string | null;
   tab: Tab;
   onboarding: boolean;
   basePath: string;
@@ -332,6 +335,8 @@ export type AppViewState = {
     handleExecApprovalDecision: (decision: "allow-once" | "allow-always" | "deny") => Promise<void>;
     handleGatewayUrlConfirm: () => void;
     handleGatewayUrlCancel: () => void;
+    handleMockPortalLogin: (userId?: string) => void;
+    handleMockPortalLogout: () => void;
     handleConfigLoad: () => Promise<void>;
     handleConfigSave: () => Promise<void>;
     handleConfigApply: () => Promise<void>;

@@ -117,6 +117,40 @@
   flex-shrink: 0;
 }
 
+.portal-user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--bg-elevated) 84%, transparent);
+  color: var(--text);
+}
+
+.portal-user-chip__name {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text-strong);
+}
+
+.portal-user-chip__id {
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.chat-controls__session-lock {
+  min-height: 40px;
+  justify-content: center;
+  padding: 0 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .topnav-shell__content {
   min-width: 0;
   flex: 1;
