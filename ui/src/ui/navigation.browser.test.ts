@@ -40,8 +40,12 @@ describe("control UI routing", () => {
 
     expect(window.matchMedia("(max-width: 768px)").matches).toBe(true);
 
-    const dreamsLink = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/dreaming"]');
-    expect(dreamsLink).not.toBeNull();
+    const chatLink = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/chat"]');
+    const sessionsLink = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/sessions"]');
+    const cronLink = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/cron"]');
+    expect(chatLink).not.toBeNull();
+    expect(sessionsLink).not.toBeNull();
+    expect(cronLink).not.toBeNull();
   });
 
   it("renders the dashboard breadcrumb as an overview link", async () => {
@@ -410,12 +414,12 @@ describe("control UI routing", () => {
     expect(nav.classList.contains("shell-nav")).toBe(true);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
 
-    const link = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/channels"]');
+    const link = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/sessions"]');
     expect(link).not.toBeNull();
     link?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
 
     await app.updateComplete;
-    expect(app.tab).toBe("channels");
+    expect(app.tab).toBe("sessions");
     expect(shell.classList.contains("shell--nav-drawer-open")).toBe(false);
 
     app.applySettings({ ...app.settings, navCollapsed: true });
@@ -425,7 +429,7 @@ describe("control UI routing", () => {
     expect(app.querySelector(".sidebar-brand__logo")).toBeNull();
 
     expect(app.querySelector(".sidebar-shell__footer")).not.toBeNull();
-    expect(app.querySelector(".sidebar-utility-link")).not.toBeNull();
+    expect(app.querySelector(".sidebar-utility-link")).toBeNull();
 
     const item = app.querySelector<HTMLElement>(".sidebar .nav-item");
     const header = app.querySelector<HTMLElement>(".sidebar-shell__header");
@@ -493,7 +497,7 @@ describe("control UI routing", () => {
     await app.updateComplete;
     expect(app.chatMobileControlsOpen).toBe(true);
 
-    app.setTab("channels");
+    app.setTab("sessions");
     await app.updateComplete;
     expect(app.chatMobileControlsOpen).toBe(false);
   });
@@ -523,14 +527,14 @@ describe("control UI routing", () => {
     await app.updateComplete;
     expect(shell?.classList.contains("shell--chat-focus")).toBe(true);
 
-    const channelsLink = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/channels"]');
-    expect(channelsLink).not.toBeNull();
-    channelsLink?.dispatchEvent(
+    const sessionsLink = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/sessions"]');
+    expect(sessionsLink).not.toBeNull();
+    sessionsLink?.dispatchEvent(
       new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }),
     );
 
     await app.updateComplete;
-    expect(app.tab).toBe("channels");
+    expect(app.tab).toBe("sessions");
     expect(shell?.classList.contains("shell--chat-focus")).toBe(false);
 
     const chatLink = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/chat"]');

@@ -500,7 +500,7 @@ export async function dispatchCronDelivery(
   let directCronSessionDeleted = false;
   const formatDeliveryTargetError = (error: string) =>
     params.unverifiedMessagingToolDelivery === true
-      ? `${error}; the agent used the message tool, but OpenClaw could not verify that message matched the cron delivery target`
+      ? `${error}; the agent used the message tool, but NOEMate could not verify that message matched the cron delivery target`
       : error;
   const failDeliveryTarget = (error: string) =>
     params.withRunSession({

@@ -67,7 +67,7 @@ const coreCliCommandCatalog = defineCommandDescriptorCatalog([
   },
   {
     name: "mcp",
-    description: "Manage OpenClaw MCP config and channel bridge",
+    description: "Manage NOEMate MCP config and channel bridge",
     hasSubcommands: true,
   },
   {

@@ -229,7 +229,7 @@ function makeMissingToolResult(params: {
         type: "text",
         text:
           params.text ??
-          "[openclaw] missing tool result in session history; inserted synthetic error result for transcript repair.",
+          "[NOEMate] missing tool result in session history; inserted synthetic error result for transcript repair.",
       },
     ],
     isError: true,

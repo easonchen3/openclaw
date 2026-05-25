@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>OpenClaw</title>
+    <title>NOEMate</title>
     <script>
       (() => {
         try {
@@ -495,7 +495,7 @@
         <div class="hero">
           <div class="eyebrow">
             <span class="eyebrow-dot"></span>
-            <span id="openclaw-home-eyebrow">Welcome to OpenClaw</span>
+            <span id="openclaw-home-eyebrow">Welcome to NOEMate</span>
           </div>
           <h1 id="openclaw-home-title">Your phone stays quiet until it is needed</h1>
           <p id="openclaw-home-subtitle">
@@ -641,8 +641,8 @@
 
           document.body.dataset.state = state.gatewayState || 'offline';
           home.root.style.display = 'flex';
-          home.eyebrow.textContent = state.eyebrow || 'Welcome to OpenClaw';
-          home.title.textContent = state.title || 'OpenClaw';
+          home.eyebrow.textContent = state.eyebrow || 'Welcome to NOEMate';
+          home.title.textContent = state.title || 'NOEMate';
           home.subtitle.textContent = state.subtitle || '';
           home.gateway.textContent = state.gatewayLabel || 'Gateway';
           home.gatewayCaption.textContent = state.gatewayState === 'connected'

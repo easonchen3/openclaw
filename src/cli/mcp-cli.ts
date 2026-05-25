@@ -25,7 +25,7 @@ function printJson(value: unknown): void {
 }
 
 export function registerMcpCli(program: Command) {
-  const mcp = program.command("mcp").description("Manage OpenClaw MCP config and channel bridge");
+  const mcp = program.command("mcp").description("Manage NOEMate MCP config and channel bridge");
 
   mcp
     .command("serve")

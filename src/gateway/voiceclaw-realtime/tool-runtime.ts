@@ -85,7 +85,7 @@ export class VoiceClawRealtimeToolRuntime {
         JSON.stringify({
           status: "busy",
           tool: event.name,
-          error: "Too many OpenClaw tools are already running.",
+          error: "Too many NOEMate tools are already running.",
         }),
       );
       return true;
@@ -121,7 +121,7 @@ export class VoiceClawRealtimeToolRuntime {
       return;
     }
     inFlight.abortReason = "cancelled";
-    inFlight.controller.abort(new Error("OpenClaw tool cancelled"));
+    inFlight.controller.abort(new Error("NOEMate tool cancelled"));
   }
 
   abortAll(): void {
@@ -173,7 +173,7 @@ export class VoiceClawRealtimeToolRuntime {
       }
       const message =
         inFlight.abortReason === "timeout"
-          ? `OpenClaw tool timed out after ${this.timeoutMs}ms`
+          ? `NOEMate tool timed out after ${this.timeoutMs}ms`
           : err instanceof Error
             ? err.message
             : String(err);
@@ -209,12 +209,12 @@ export class VoiceClawRealtimeToolRuntime {
     const timeout = new Promise<never>((_, reject) => {
       inFlight.timeout = setTimeout(() => {
         if (inFlight.abortReason === "cancelled") {
-          reject(new Error("OpenClaw tool cancelled"));
+          reject(new Error("NOEMate tool cancelled"));
           return;
         }
         inFlight.abortReason = "timeout";
-        inFlight.controller.abort(new Error(`OpenClaw tool timed out after ${this.timeoutMs}ms`));
-        reject(new Error(`OpenClaw tool timed out after ${this.timeoutMs}ms`));
+        inFlight.controller.abort(new Error(`NOEMate tool timed out after ${this.timeoutMs}ms`));
+        reject(new Error(`NOEMate tool timed out after ${this.timeoutMs}ms`));
       }, this.timeoutMs);
     });
 

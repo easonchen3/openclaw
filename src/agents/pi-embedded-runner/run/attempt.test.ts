@@ -1,3 +1,4 @@
+import path from "node:path";
 import { streamSimple } from "@mariozechner/pi-ai";
 import { describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../../../config/config.js";
@@ -411,11 +412,11 @@ describe("remapInjectedContextFilesToWorkspace", () => {
       }),
     ).toEqual([
       {
-        path: "/sandbox/workspace/AGENTS.md",
+        path: path.join("/sandbox/workspace", "AGENTS.md"),
         content: "agents",
       },
       {
-        path: "/sandbox/workspace/nested/TOOLS.md",
+        path: path.join("/sandbox/workspace", "nested", "TOOLS.md"),
         content: "tools",
       },
       {
@@ -2062,7 +2063,7 @@ describe("wrapStreamFnSanitizeMalformedToolCalls", () => {
         content: [
           {
             type: "text",
-            text: "[openclaw] missing tool result in session history; inserted synthetic error result for transcript repair.",
+            text: "[NOEMate] missing tool result in session history; inserted synthetic error result for transcript repair.",
           },
         ],
         isError: true,

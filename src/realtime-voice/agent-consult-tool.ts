@@ -26,7 +26,7 @@ export const REALTIME_VOICE_AGENT_CONSULT_TOOL: RealtimeVoiceTool = {
   type: "function",
   name: REALTIME_VOICE_AGENT_CONSULT_TOOL_NAME,
   description:
-    "Ask the full OpenClaw agent for deeper reasoning, current information, or tool-backed help before speaking.",
+    "Ask the full NOEMate agent for deeper reasoning, current information, or tool-backed help before speaking.",
   parameters: {
     type: "object",
     properties: {
@@ -53,7 +53,7 @@ export function buildRealtimeVoiceAgentConsultWorkingResponse(
   return {
     status: "working",
     tool: REALTIME_VOICE_AGENT_CONSULT_TOOL_NAME,
-    message: `Tell the ${audienceLabel} briefly that you are checking, then wait for the final OpenClaw result before answering with the actual result.`,
+    message: `Tell the ${audienceLabel} briefly that you are checking, then wait for the final NOEMate result before answering with the actual result.`,
   };
 }
 
@@ -155,7 +155,7 @@ export function buildRealtimeVoiceAgentConsultPrompt(params: {
     .join("\n");
 
   return [
-    `You are helping an OpenClaw realtime voice agent during ${params.surface}.`,
+    `You are helping a NOEMate realtime voice agent during ${params.surface}.`,
     `Answer the ${questionSourceLabel}'s question with the strongest useful reasoning and available tools.`,
     "Return only the concise answer the realtime voice agent should speak next.",
     "Do not include markdown, citations unless needed, tool logs, or private reasoning.",

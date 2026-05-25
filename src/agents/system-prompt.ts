@@ -472,7 +472,7 @@ function buildMessagingSection(params: {
     "- Cross-session messaging → use sessions_send(sessionKey, message)",
     subagentOrchestrationGuidance,
     completionEventGuidance,
-    "- Never use exec/curl for provider messaging; OpenClaw handles all routing internally.",
+    "- Never use exec/curl for provider messaging; NOEMate handles all routing internally.",
     params.availableTools.has("message")
       ? [
           "",
@@ -525,19 +525,19 @@ function buildDocsSection(params: {
   }
   const lines = [
     "## Documentation",
-    docsPath ? `OpenClaw docs: ${docsPath}` : "OpenClaw docs: https://docs.openclaw.ai",
+    docsPath ? `NOEMate docs: ${docsPath}` : "NOEMate docs: https://docs.openclaw.ai",
     "Mirror: https://docs.openclaw.ai",
     sourcePath ? `Local source: ${sourcePath}` : undefined,
     "Source: https://github.com/openclaw/openclaw",
     "Community: https://discord.com/invite/clawd",
     "Find new skills: https://clawhub.ai",
     docsPath
-      ? "For OpenClaw behavior, commands, config, or architecture: consult local docs first."
-      : "For OpenClaw behavior, commands, config, or architecture: consult the docs mirror first.",
+      ? "For NOEMate behavior, commands, config, or architecture: consult local docs first."
+      : "For NOEMate behavior, commands, config, or architecture: consult the docs mirror first.",
     "For config field docs, prefer the `gateway` tool action `config.schema.lookup`; for broader config guidance, read `docs/gateway/configuration.md` and `docs/gateway/configuration-reference.md`.",
     sourcePath
-      ? "If docs are incomplete or stale, inspect the local OpenClaw source code before answering."
-      : "If docs are incomplete or stale, review the OpenClaw source on GitHub before answering.",
+      ? "If docs are incomplete or stale, inspect the local NOEMate source code before answering."
+      : "If docs are incomplete or stale, review the NOEMate source on GitHub before answering.",
     "When diagnosing issues, run `openclaw status` yourself when possible; only ask the user if you lack access (e.g., sandboxed).",
     "",
   ];
@@ -637,10 +637,10 @@ export function buildAgentSystemPrompt(params: {
     nodes: "List/describe/notify/camera/screen on paired nodes",
     cron: "Manage cron jobs and wake events (use for reminders; when scheduling a reminder, write the systemEvent text as something that will read like a reminder when it fires, and mention that it is a reminder depending on the time gap between setting and firing; include recent context in reminder text if appropriate)",
     message: "Send messages and channel actions",
-    gateway: "Restart, apply config, or run updates on the running OpenClaw process",
+    gateway: "Restart, apply config, or run updates on the running NOEMate process",
     agents_list: acpSpawnRuntimeEnabled
-      ? 'List OpenClaw agent ids allowed for sessions_spawn when runtime="subagent" (not ACP harness ids)'
-      : "List OpenClaw agent ids allowed for sessions_spawn",
+      ? 'List NOEMate agent ids allowed for sessions_spawn when runtime="subagent" (not ACP harness ids)'
+      : "List NOEMate agent ids allowed for sessions_spawn",
     sessions_list: "List other sessions (incl. sub-agents) with filters/last",
     sessions_history: "Fetch history for another session/sub-agent",
     sessions_send: "Send a message to another session/sub-agent",
@@ -823,7 +823,7 @@ export function buildAgentSystemPrompt(params: {
 
   // For "none" mode, return just the basic identity line
   if (promptMode === "none") {
-    return "You are a personal assistant running inside OpenClaw.";
+    return "You are NOEMate, a personal assistant running inside NOEMate.";
   }
 
   const contextFiles = params.contextFiles ?? [];
@@ -878,7 +878,7 @@ export function buildAgentSystemPrompt(params: {
   });
   const stablePrefix = cacheStablePromptPrefix(stablePrefixCacheKey, () => {
     const lines = [
-      "You are a personal assistant running inside OpenClaw.",
+      "You are NOEMate, a personal assistant running inside NOEMate.",
       "",
       "## Tooling",
       "Tool availability (filtered by policy):",
@@ -893,7 +893,7 @@ export function buildAgentSystemPrompt(params: {
             "- apply_patch: apply multi-file patches",
             `- ${execToolName}: run shell commands (supports background via yieldMs/background)`,
             `- ${processToolName}: manage background exec sessions`,
-            "- browser: control OpenClaw's dedicated browser",
+            "- browser: control NOEMate's dedicated browser",
             "- canvas: present/eval/snapshot the Canvas",
             "- nodes: list/describe/notify/camera/screen on paired nodes",
             "- cron: manage cron jobs and wake events (use for reminders; when scheduling a reminder, write the systemEvent text as something that will read like a reminder when it fires, and mention that it is a reminder depending on the time gap between setting and firing; include recent context in reminder text if appropriate)",
@@ -961,8 +961,8 @@ export function buildAgentSystemPrompt(params: {
         fallback: [],
       }),
       ...safetySection,
-      "## OpenClaw CLI Quick Reference",
-      "OpenClaw is controlled via subcommands. Do not invent commands.",
+      "## NOEMate CLI Quick Reference",
+      "NOEMate is controlled via subcommands. Do not invent commands.",
       "For config changes, use the first-class `gateway` tool (`config.schema.lookup`, `config.get`, `config.patch`, `config.apply`) instead of editing config through exec; the gateway tool hot-reloads config when possible and uses a safe restart only when required.",
       "Use the `gateway` tool action `restart` for Gateway restarts. Only use CLI service lifecycle commands when the user explicitly asks for them.",
       "Gateway service lifecycle quick reference:",
@@ -976,14 +976,14 @@ export function buildAgentSystemPrompt(params: {
       "",
       ...skillsSection,
       ...memorySection,
-      hasGateway && !isMinimal ? "## OpenClaw Self-Update" : "",
+      hasGateway && !isMinimal ? "## NOEMate Self-Update" : "",
       hasGateway && !isMinimal
         ? [
             "Get Updates (self-update) is ONLY allowed when the user explicitly asks for it.",
             "Do not run config.apply or update.run unless the user explicitly requests an update or config change; if it's not explicit, ask first.",
             "Use config.schema.lookup with a specific dot path to inspect only the relevant config subtree before making config changes or answering config-field questions; avoid guessing field names/types.",
             "Actions: config.schema.lookup, config.get, config.patch (partial update, merges with existing), config.apply (validate + write full config), update.run (update deps or git, then restart). Config writes hot-reload when possible and use a safe restart only when required.",
-            "After restart, OpenClaw pings the last active session automatically.",
+            "After restart, NOEMate pings the last active session automatically.",
           ].join("\n")
         : "",
       hasGateway && !isMinimal ? "" : "",
@@ -1076,7 +1076,7 @@ export function buildAgentSystemPrompt(params: {
       }),
       ...bootstrapSystemPromptSections,
       "## Workspace Files (injected)",
-      "These user-editable files are loaded by OpenClaw and included below in Project Context.",
+      "These user-editable files are loaded by NOEMate and included below in Project Context.",
       "",
       ...buildAssistantOutputDirectivesSection(isMinimal),
     ];

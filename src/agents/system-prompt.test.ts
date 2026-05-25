@@ -240,7 +240,7 @@ describe("buildAgentSystemPrompt", () => {
       workspaceDir: "/tmp/openclaw",
     });
 
-    expect(prompt).toContain("## OpenClaw CLI Quick Reference");
+    expect(prompt).toContain("## NOEMate CLI Quick Reference");
     expect(prompt).toContain("use the first-class `gateway` tool");
     expect(prompt).toContain(
       "Only use CLI service lifecycle commands when the user explicitly asks",
@@ -420,7 +420,7 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).not.toContain('runtime="acp" requires `agentId`');
     expect(prompt).not.toContain("not ACP harness ids");
     expect(prompt).toContain("- sessions_spawn: Spawn an isolated sub-agent session");
-    expect(prompt).toContain("- agents_list: List OpenClaw agent ids allowed for sessions_spawn");
+    expect(prompt).toContain("- agents_list: List NOEMate agent ids allowed for sessions_spawn");
   });
 
   it("omits ACP harness spawn guidance for sandboxed sessions and shows ACP block note", () => {
@@ -463,9 +463,9 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).toContain(
       "- If multiple could apply: choose the most specific one, read its SKILL.md at <location> with `Read`, then follow it. You MUST use the exact <location> value from <available_skills>; never guess, fabricate, or hard-code a skill file path.",
     );
-    expect(prompt).toContain("OpenClaw docs: /tmp/openclaw/docs");
+    expect(prompt).toContain("NOEMate docs: /tmp/openclaw/docs");
     expect(prompt).toContain(
-      "For OpenClaw behavior, commands, config, or architecture: consult local docs first.",
+      "For NOEMate behavior, commands, config, or architecture: consult local docs first.",
     );
   });
 
@@ -477,13 +477,13 @@ describe("buildAgentSystemPrompt", () => {
     });
 
     expect(prompt).toContain("## Documentation");
-    expect(prompt).toContain("OpenClaw docs: /tmp/openclaw/docs");
+    expect(prompt).toContain("NOEMate docs: /tmp/openclaw/docs");
     expect(prompt).toContain("Local source: /tmp/openclaw");
     expect(prompt).toContain(
-      "For OpenClaw behavior, commands, config, or architecture: consult local docs first.",
+      "For NOEMate behavior, commands, config, or architecture: consult local docs first.",
     );
     expect(prompt).toContain(
-      "If docs are incomplete or stale, inspect the local OpenClaw source code before answering.",
+      "If docs are incomplete or stale, inspect the local NOEMate source code before answering.",
     );
   });
 
@@ -492,10 +492,10 @@ describe("buildAgentSystemPrompt", () => {
       workspaceDir: "/tmp/work",
     });
 
-    expect(prompt).toContain("OpenClaw docs: https://docs.openclaw.ai");
+    expect(prompt).toContain("NOEMate docs: https://docs.openclaw.ai");
     expect(prompt).toContain("Source: https://github.com/openclaw/openclaw");
     expect(prompt).toContain(
-      "If docs are incomplete or stale, review the OpenClaw source on GitHub before answering.",
+      "If docs are incomplete or stale, review the NOEMate source on GitHub before answering.",
     );
   });
 
@@ -628,7 +628,7 @@ describe("buildAgentSystemPrompt", () => {
       toolNames: ["gateway", "exec"],
     });
 
-    expect(prompt).toContain("## OpenClaw Self-Update");
+    expect(prompt).toContain("## NOEMate Self-Update");
     expect(prompt).toContain("config.schema.lookup");
     expect(prompt).toContain("config.apply");
     expect(prompt).toContain("config.patch");

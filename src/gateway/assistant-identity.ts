@@ -19,7 +19,7 @@ const MAX_ASSISTANT_EMOJI = 16;
 
 export const DEFAULT_ASSISTANT_IDENTITY: AssistantIdentity = {
   agentId: "main",
-  name: "Assistant",
+  name: "NOEMate",
   avatar: "A",
 };
 

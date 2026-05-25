@@ -164,7 +164,7 @@ describe("sanitizeUserFacingText", () => {
     "rewrites disk-space failures with errorContext: %s",
     (input) => {
       expect(sanitizeUserFacingText(input, { errorContext: true })).toBe(
-        "OpenClaw could not write local session data because the disk is full. Free some disk space and try again.",
+        "NOEMate could not write local session data because the disk is full. Free some disk space and try again.",
       );
     },
   );

@@ -1029,7 +1029,7 @@ describe("dispatchCronDelivery — double-announce guard", () => {
       "sessionKey is required to resolve delivery.channel=last",
     );
     expect(state.result?.error).toContain(
-      "the agent used the message tool, but OpenClaw could not verify",
+      "the agent used the message tool, but NOEMate could not verify",
     );
   });
 
