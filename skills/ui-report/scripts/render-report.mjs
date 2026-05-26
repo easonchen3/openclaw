@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 const args = process.argv.slice(2);
-const input = args[0];
+const rawInput = args[0];
 const specIdx = args.indexOf("--spec");
 const outIdx = args.indexOf("--out");
 const htmlIdx = args.indexOf("--html-out");
@@ -13,12 +13,55 @@ const refTimeIdx = args.indexOf("--ref-time");
 const canvasRootIdx = args.indexOf("--canvas-root");
 const analysisMdIdx = args.indexOf("--analysis-md");
 
-if (!input) {
+if (!rawInput) {
   console.error(
     "Usage: node render-report.mjs <data.json> [--spec spec.json] [--out pointer.json] [--html-out report.html] [--payload-out payload.json] [--canvas-root canvasDir] [--ref-time epochMs|ISO]",
   );
   process.exit(2);
 }
+
+function resolveUserPath(value) {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return "";
+  if (trimmed === "~") return os.homedir();
+  if (trimmed.startsWith("~/") || trimmed.startsWith("~\\")) {
+    return path.join(os.homedir(), trimmed.slice(2));
+  }
+  return path.resolve(trimmed);
+}
+
+function findReportDataFile(directory) {
+  const candidates = ["anomalies.json", "predicted.json", "analyzed.json"].map((name) =>
+    path.join(directory, name),
+  );
+  return candidates.find(
+    (candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile(),
+  );
+}
+
+function resolveInputPath(value) {
+  const trimmed = String(value ?? "").trim();
+  const resolved = resolveUserPath(trimmed);
+  if (fs.existsSync(resolved)) {
+    const stat = fs.statSync(resolved);
+    if (stat.isFile()) return resolved;
+    if (stat.isDirectory()) {
+      const nested = findReportDataFile(resolved);
+      if (nested) return nested;
+    }
+  }
+
+  const sessionDirectory = path.join("/tmp", "noe-kpi-analyst", trimmed);
+  const sessionData = findReportDataFile(sessionDirectory);
+  if (sessionData) return sessionData;
+
+  const sharedData = findReportDataFile(path.join("/tmp", "noe-kpi-analyst"));
+  if (sharedData) return sharedData;
+
+  return resolved;
+}
+
+const input = resolveInputPath(rawInput);
 
 const specPath = specIdx >= 0 ? args[specIdx + 1] : "";
 const outPath = outIdx >= 0 ? args[outIdx + 1] : "";
@@ -40,16 +83,6 @@ const spec =
 const data = JSON.parse(fs.readFileSync(input, "utf8").replace(/^\uFEFF/u, ""));
 
 const CANVAS_HOST_PATH = "/__openclaw__/canvas";
-
-function resolveUserPath(value) {
-  const trimmed = String(value ?? "").trim();
-  if (!trimmed) return "";
-  if (trimmed === "~") return os.homedir();
-  if (trimmed.startsWith("~/") || trimmed.startsWith("~\\")) {
-    return path.join(os.homedir(), trimmed.slice(2));
-  }
-  return path.resolve(trimmed);
-}
 
 function resolveStateDir() {
   const override = process.env.OPENCLAW_STATE_DIR?.trim();

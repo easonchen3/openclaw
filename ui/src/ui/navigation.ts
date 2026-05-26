@@ -3,7 +3,7 @@ import type { IconName } from "./icons.js";
 import { normalizeLowercaseStringOrEmpty } from "./string-coerce.ts";
 
 export const TAB_GROUPS = [
-  { label: "chat", tabs: ["chat", "sessions", "cron"] },
+  { label: "chat", tabs: ["chat", "sessions", "cron", "skills"] },
 ] as const;
 
 export type Tab =

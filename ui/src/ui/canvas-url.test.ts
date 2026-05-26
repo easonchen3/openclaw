@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import { resolveCanvasIframeUrl } from "./canvas-url.ts";
 
 describe("resolveCanvasIframeUrl", () => {
-  it("allows same-origin hosted canvas document paths", () => {
-    expect(resolveCanvasIframeUrl("/__openclaw__/canvas/documents/cv_demo/index.html")).toBe(
-      "/__openclaw__/canvas/documents/cv_demo/index.html",
-    );
+  it("defers same-origin hosted canvas document paths until a scoped canvas host is available", () => {
+    expect(
+      resolveCanvasIframeUrl("/__openclaw__/canvas/documents/cv_demo/index.html"),
+    ).toBeUndefined();
+    expect(
+      resolveCanvasIframeUrl("/__openclaw__/canvas/documents/cv_demo/index.html", null),
+    ).toBeUndefined();
   });
 
   it("rewrites safe canvas paths through the scoped canvas host", () => {
@@ -17,6 +20,26 @@ describe("resolveCanvasIframeUrl", () => {
     ).toBe(
       "http://127.0.0.1:19003/__openclaw__/cap/cap_123/__openclaw__/canvas/documents/cv_demo/index.html",
     );
+  });
+
+  it("rewrites local absolute canvas URLs through the scoped canvas host", () => {
+    expect(
+      resolveCanvasIframeUrl(
+        "http://127.0.0.1:19289/__openclaw__/canvas/documents/cv_demo/index.html",
+        "http://127.0.0.1:19003/__openclaw__/cap/cap_123",
+      ),
+    ).toBe(
+      "http://127.0.0.1:19003/__openclaw__/cap/cap_123/__openclaw__/canvas/documents/cv_demo/index.html",
+    );
+  });
+
+  it("rejects internal canvas paths when the host is not capability scoped", () => {
+    expect(
+      resolveCanvasIframeUrl(
+        "/__openclaw__/canvas/documents/cv_demo/index.html",
+        "http://127.0.0.1:19003",
+      ),
+    ).toBeUndefined();
   });
 
   it("rejects non-canvas same-origin paths", () => {

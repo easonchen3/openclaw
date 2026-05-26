@@ -1,6 +1,7 @@
 const A2UI_PATH = "/__openclaw__/a2ui";
 const CANVAS_HOST_PATH = "/__openclaw__/canvas";
 const CANVAS_CAPABILITY_PATH_PREFIX = "/__openclaw__/cap";
+const LOCAL_CANVAS_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
 function isCanvasHttpPath(pathname: string): boolean {
   return (
@@ -15,6 +16,14 @@ function isExternalHttpUrl(entry: URL): boolean {
   return entry.protocol === "http:" || entry.protocol === "https:";
 }
 
+function isLocalCanvasHttpUrl(entry: URL): boolean {
+  return (
+    isExternalHttpUrl(entry) &&
+    LOCAL_CANVAS_HOSTS.has(entry.hostname) &&
+    isCanvasHttpPath(entry.pathname)
+  );
+}
+
 function sanitizeCanvasEntryUrl(
   rawEntryUrl: string,
   allowExternalEmbedUrls = false,
@@ -22,6 +31,9 @@ function sanitizeCanvasEntryUrl(
   try {
     const entry = new URL(rawEntryUrl, "http://localhost");
     if (entry.origin !== "http://localhost") {
+      if (isLocalCanvasHttpUrl(entry)) {
+        return `${entry.pathname}${entry.search}${entry.hash}`;
+      }
       if (!allowExternalEmbedUrls || !isExternalHttpUrl(entry)) {
         return undefined;
       }
@@ -49,30 +61,29 @@ export function resolveCanvasIframeUrl(
   if (!safeEntryUrl) {
     return undefined;
   }
+  let isInternalCanvasUrl = false;
   try {
     const entry = new URL(safeEntryUrl, "http://localhost");
-    if (
-      entry.origin === "http://localhost" &&
-      entry.pathname.startsWith(`${CANVAS_HOST_PATH}/`) &&
-      canvasHostUrl === null
-    ) {
-      return undefined;
-    }
+    isInternalCanvasUrl = entry.origin === "http://localhost" && isCanvasHttpPath(entry.pathname);
   } catch {
     return undefined;
   }
-  if (!canvasHostUrl?.trim()) {
+  if (!isInternalCanvasUrl) {
     return safeEntryUrl;
   }
+  const scopedCanvasHostUrl = canvasHostUrl?.trim();
+  if (!scopedCanvasHostUrl) {
+    return undefined;
+  }
   try {
-    const scopedHostUrl = new URL(canvasHostUrl);
+    const scopedHostUrl = new URL(scopedCanvasHostUrl);
     const scopedPrefix = scopedHostUrl.pathname.replace(/\/+$/, "");
     if (!scopedPrefix.startsWith(CANVAS_CAPABILITY_PATH_PREFIX)) {
-      return safeEntryUrl;
+      return undefined;
     }
     const entry = new URL(safeEntryUrl, scopedHostUrl.origin);
     if (!isCanvasHttpPath(entry.pathname)) {
-      return safeEntryUrl;
+      return undefined;
     }
     entry.protocol = scopedHostUrl.protocol;
     entry.username = scopedHostUrl.username;
@@ -81,6 +92,6 @@ export function resolveCanvasIframeUrl(
     entry.pathname = `${scopedPrefix}${entry.pathname}`;
     return entry.toString();
   } catch {
-    return safeEntryUrl;
+    return undefined;
   }
 }

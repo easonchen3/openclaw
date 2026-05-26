@@ -2,7 +2,7 @@
 
 import { render } from "lit";
 import { describe, expect, it, vi } from "vitest";
-import { renderToolCard } from "./tool-cards.ts";
+import { renderToolCard, renderToolPreview } from "./tool-cards.ts";
 
 vi.mock("../icons.ts", () => ({
   icons: {},
@@ -21,6 +21,34 @@ vi.mock("../tool-display.ts", () => ({
 }));
 
 describe("tool-cards", () => {
+  it("defers assistant canvas previews until a scoped canvas host is available", () => {
+    const preview = {
+      kind: "canvas" as const,
+      surface: "assistant_message" as const,
+      render: "url" as const,
+      viewId: "cv_preview",
+      title: "Preview",
+      url: "/__openclaw__/canvas/documents/cv_preview/index.html",
+      preferredHeight: 360,
+    };
+    const container = document.createElement("div");
+
+    render(renderToolPreview(preview, "chat_message"), container);
+    expect(container.querySelector(".chat-tool-card__preview-frame")).toBeNull();
+
+    render(
+      renderToolPreview(preview, "chat_message", {
+        canvasHostUrl: "http://127.0.0.1:19003/__openclaw__/cap/cap_123",
+      }),
+      container,
+    );
+
+    const iframe = container.querySelector<HTMLIFrameElement>(".chat-tool-card__preview-frame");
+    expect(iframe?.getAttribute("src")).toBe(
+      "http://127.0.0.1:19003/__openclaw__/cap/cap_123/__openclaw__/canvas/documents/cv_preview/index.html",
+    );
+  });
+
   it("renders expanded cards with inline input and output sections", () => {
     const container = document.createElement("div");
     const toggle = vi.fn();

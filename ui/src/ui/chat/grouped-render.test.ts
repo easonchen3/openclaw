@@ -90,6 +90,7 @@ vi.mock("../tool-display.ts", () => ({
 }));
 
 type RenderMessageGroupOptions = Parameters<typeof renderMessageGroup>[1];
+const SCOPED_CANVAS_HOST_URL = "http://127.0.0.1:19003/__openclaw__/cap/cap_123";
 
 function renderAssistantMessage(
   container: HTMLElement,
@@ -1086,7 +1087,7 @@ describe("grouped chat rendering", () => {
         ],
         timestamp: Date.now(),
       },
-      { showToolCalls: false },
+      { showToolCalls: false, canvasHostUrl: SCOPED_CANVAS_HOST_URL },
     );
 
     expect(container.querySelector(".chat-bubble")).not.toBeNull();
@@ -1523,7 +1524,7 @@ describe("grouped chat rendering", () => {
         timestamp: Date.now(),
       },
       {
-        canvasHostUrl: "http://127.0.0.1:19003/__openclaw__/cap/cap_123",
+        canvasHostUrl: SCOPED_CANVAS_HOST_URL,
       },
     );
 
@@ -1602,7 +1603,10 @@ describe("grouped chat rendering", () => {
         ],
         timestamp: Date.now() + 2,
       },
-      { showToolCalls: true },
+      {
+        showToolCalls: true,
+        canvasHostUrl: SCOPED_CANVAS_HOST_URL,
+      },
     );
 
     const assistantBubble = container.querySelector(".chat-group.assistant .chat-bubble");
@@ -1667,7 +1671,7 @@ describe("grouped chat rendering", () => {
       ],
       {
         embedSandboxMode: "scripts",
-        canvasHostUrl: "http://127.0.0.1:19003/__openclaw__/cap/cap_123",
+        canvasHostUrl: SCOPED_CANVAS_HOST_URL,
       },
     );
 
@@ -1751,6 +1755,7 @@ describe("grouped chat rendering", () => {
       ],
       {
         isToolMessageExpanded: () => true,
+        canvasHostUrl: SCOPED_CANVAS_HOST_URL,
       },
     );
 
