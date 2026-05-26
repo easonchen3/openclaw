@@ -1533,6 +1533,39 @@ describe("grouped chat rendering", () => {
     );
   });
 
+  it("defers inline canvas iframe rendering until the scoped canvas host is available", () => {
+    const container = document.createElement("div");
+    renderAssistantMessage(
+      container,
+      {
+        id: "assistant-scoped-canvas-deferred",
+        role: "assistant",
+        content: [
+          { type: "text", text: "Rendered inline." },
+          {
+            type: "canvas",
+            preview: {
+              kind: "canvas",
+              surface: "assistant_message",
+              render: "url",
+              viewId: "cv_inline_deferred",
+              title: "Deferred preview",
+              url: "/__openclaw__/canvas/documents/cv_inline_deferred/index.html",
+              preferredHeight: 320,
+            },
+          },
+        ],
+        timestamp: Date.now(),
+      },
+      {
+        canvasHostUrl: null,
+      },
+    );
+
+    expect(container.querySelector(".chat-tool-card__preview-frame")).toBeNull();
+    expect(container.textContent).toContain("Rendered inline.");
+  });
+
   it("renders server-history canvas blocks for the live toolResult sequence after history reload", () => {
     const container = document.createElement("div");
     renderAssistantMessage(
@@ -1582,7 +1615,11 @@ describe("grouped chat rendering", () => {
 
   it("renders hidden assistant_message canvas results with the configured sandbox", () => {
     const container = document.createElement("div");
-    const renderCanvas = (params: { embedSandboxMode?: "trusted"; suffix: string }) =>
+    const renderCanvas = (params: {
+      embedSandboxMode?: "trusted";
+      suffix: string;
+      canvasHostUrl?: string | null;
+    }) =>
       renderMessageGroups(
         container,
         [
@@ -1601,24 +1638,74 @@ describe("grouped chat rendering", () => {
         ],
         {
           embedSandboxMode: params.embedSandboxMode ?? "scripts",
+          canvasHostUrl: params.canvasHostUrl,
         },
       );
 
-    renderCanvas({ suffix: "default" });
+    renderCanvas({ suffix: "default", canvasHostUrl: null });
 
     let iframe = container.querySelector<HTMLIFrameElement>(".chat-tool-card__preview-frame");
-    expect(iframe).not.toBeNull();
-    expect(iframe?.getAttribute("sandbox")).toBe("allow-scripts");
-    expect(iframe?.getAttribute("src")).toBe(
-      "/__openclaw__/canvas/documents/cv_inline_default/index.html",
-    );
+    expect(iframe).toBeNull();
     expect(container.textContent).toContain("Inline canvas result.");
-    expect(container.textContent).toContain("Inline demo");
-    expect(container.textContent).toContain("Raw details");
+    expect(container.textContent).toContain("Inline canvas result.");
 
-    renderCanvas({ embedSandboxMode: "trusted", suffix: "trusted" });
+    renderMessageGroups(
+      container,
+      [
+        createMessageGroup(
+          {
+            id: "assistant-canvas-inline-default-scoped",
+            role: "assistant",
+            content: [
+              { type: "text", text: "Inline canvas result." },
+              createAssistantCanvasBlock({ suffix: "default" }),
+            ],
+            timestamp: Date.now(),
+          },
+          "assistant",
+        ),
+      ],
+      {
+        embedSandboxMode: "scripts",
+        canvasHostUrl: "http://127.0.0.1:19003/__openclaw__/cap/cap_123",
+      },
+    );
+
     iframe = container.querySelector<HTMLIFrameElement>(".chat-tool-card__preview-frame");
-    expect(iframe?.getAttribute("sandbox")).toBe("allow-scripts allow-same-origin");
+    expect(iframe).not.toBeNull();
+    expect(iframe?.getAttribute("sandbox")).toBe("allow-scripts allow-popups");
+    expect(iframe?.getAttribute("src")).toBe(
+      "http://127.0.0.1:19003/__openclaw__/cap/cap_123/__openclaw__/canvas/documents/cv_inline_default/index.html",
+    );
+
+    renderCanvas({ embedSandboxMode: "trusted", suffix: "trusted", canvasHostUrl: null });
+    iframe = container.querySelector<HTMLIFrameElement>(".chat-tool-card__preview-frame");
+    expect(iframe).toBeNull();
+
+    renderMessageGroups(
+      container,
+      [
+        createMessageGroup(
+          {
+            id: "assistant-canvas-inline-trusted-scoped",
+            role: "assistant",
+            content: [
+              { type: "text", text: "Inline canvas result." },
+              createAssistantCanvasBlock({ suffix: "trusted" }),
+            ],
+            timestamp: Date.now(),
+          },
+          "assistant",
+        ),
+      ],
+      {
+        embedSandboxMode: "trusted",
+        canvasHostUrl: "http://127.0.0.1:19003/__openclaw__/cap/cap_123",
+      },
+    );
+
+    iframe = container.querySelector<HTMLIFrameElement>(".chat-tool-card__preview-frame");
+    expect(iframe?.getAttribute("sandbox")).toBe("allow-scripts allow-same-origin allow-popups");
   });
 
   it("renders assistant_message canvas results in the assistant bubble even when tool rows are visible", () => {

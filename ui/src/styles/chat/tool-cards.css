@@ -250,6 +250,74 @@
   background: #fff;
 }
 
+.chat-companion-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.chat-companion-panel__header-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.chat-companion-panel__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.chat-companion-panel__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card) 96%, transparent);
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.chat-companion-panel__open:hover,
+.chat-companion-panel__open:focus-visible {
+  border-color: color-mix(in srgb, var(--border-strong) 78%, transparent);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+}
+
+.chat-companion-panel__open-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-companion-panel__open-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chat-companion-panel__body {
+  min-width: 0;
+  overflow: visible;
+}
+
+.chat-companion-panel .chat-tool-card__preview-frame {
+  min-height: 760px;
+  border: 1px solid color-mix(in srgb, var(--border) 54%, transparent);
+  border-radius: 8px;
+  background: #fff;
+}
+
 .chat-tool-card__raw-toggle {
   width: 100%;
   display: inline-flex;

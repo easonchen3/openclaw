@@ -27,6 +27,12 @@ describe("resolveCanvasIframeUrl", () => {
     expect(resolveCanvasIframeUrl("https://example.com/evil.html")).toBeUndefined();
   });
 
+  it("keeps explicitly allowed external embed URLs without a scoped canvas host", () => {
+    expect(resolveCanvasIframeUrl("https://example.com/embed.html?x=1#y", undefined, true)).toBe(
+      "https://example.com/embed.html?x=1#y",
+    );
+  });
+
   it("allows absolute external URLs only when explicitly enabled", () => {
     expect(resolveCanvasIframeUrl("https://example.com/embed.html?x=1#y", undefined, true)).toBe(
       "https://example.com/embed.html?x=1#y",

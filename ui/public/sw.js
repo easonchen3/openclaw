@@ -1,4 +1,4 @@
-// OpenClaw Control – Service Worker
+// NOEMate Control – Service Worker
 // Handles offline caching and push notifications.
 
 const CACHE_NAME = "openclaw-control-v1";
@@ -80,10 +80,10 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data.json();
   } catch {
-    data = { title: "OpenClaw", body: event.data.text() };
+    data = { title: "NOEMate", body: event.data.text() };
   }
 
-  const title = data.title || "OpenClaw";
+  const title = data.title || "NOEMate";
   const options = {
     body: data.body || "",
     icon: "./apple-touch-icon.png",

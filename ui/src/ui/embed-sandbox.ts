@@ -7,9 +7,9 @@ export function resolveEmbedSandbox(mode: EmbedSandboxMode | null | undefined): 
     case "strict":
       return "";
     case "trusted":
-      return "allow-scripts allow-same-origin";
+      return "allow-scripts allow-same-origin allow-popups";
     case "scripts":
     default:
-      return "allow-scripts";
+      return "allow-scripts allow-popups";
   }
 }

@@ -38,6 +38,10 @@
   max-width: min(980px, calc(100% - 46px));
 }
 
+.chat-group.assistant .chat-group-messages:has(.chat-companion-panel) {
+  max-width: min(1680px, calc(100% - 24px));
+}
+
 .chat-group.user .chat-group-footer {
   justify-content: flex-end;
 }
@@ -227,7 +231,8 @@ img.chat-avatar {
 
 .chat-bubble--tool-shell {
   align-self: stretch;
-  width: min(100%, 760px);
+  width: 100%;
+  max-width: 100%;
   padding: 0;
   border: 0;
   background: transparent;
@@ -629,6 +634,10 @@ details.msg-meta:not([open]) .msg-meta__details {
   }
 
   .chat-group.tool .chat-group-messages {
+    max-width: calc(100% - 46px);
+  }
+
+  .chat-group.assistant .chat-group-messages:has(.chat-companion-panel) {
     max-width: calc(100% - 46px);
   }
 }

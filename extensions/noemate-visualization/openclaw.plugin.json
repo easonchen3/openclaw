@@ -1,0 +1,50 @@
+{
+  "id": "noemate-visualization",
+  "enabledByDefault": true,
+  "name": "NOEMate Visualization",
+  "description": "Render hosted UI companion artifacts for NOEMate reports.",
+  "contracts": {
+    "tools": ["ui_artifact"]
+  },
+  "toolMetadata": {
+    "ui_artifact": {
+      "optional": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "spikeZScoreThreshold": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 10,
+        "default": 3
+      },
+      "dropZScoreThreshold": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 10,
+        "default": 3
+      },
+      "sustainedWindowPoints": {
+        "type": "number",
+        "minimum": 2,
+        "maximum": 48,
+        "default": 3
+      },
+      "sustainedZScoreThreshold": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 10,
+        "default": 2.5
+      },
+      "maxPointsBeforeDownsample": {
+        "type": "number",
+        "minimum": 100,
+        "maximum": 5000,
+        "default": 1500
+      }
+    }
+  }
+}

@@ -49,6 +49,18 @@ export function resolveCanvasIframeUrl(
   if (!safeEntryUrl) {
     return undefined;
   }
+  try {
+    const entry = new URL(safeEntryUrl, "http://localhost");
+    if (
+      entry.origin === "http://localhost" &&
+      entry.pathname.startsWith(`${CANVAS_HOST_PATH}/`) &&
+      canvasHostUrl === null
+    ) {
+      return undefined;
+    }
+  } catch {
+    return undefined;
+  }
   if (!canvasHostUrl?.trim()) {
     return safeEntryUrl;
   }

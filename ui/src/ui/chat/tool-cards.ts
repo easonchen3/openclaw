@@ -2,6 +2,7 @@ import { html, nothing } from "lit";
 import { extractCanvasFromText } from "../../../../src/chat/canvas-render.js";
 import { resolveCanvasIframeUrl } from "../canvas-url.ts";
 import { resolveEmbedSandbox, type EmbedSandboxMode } from "../embed-sandbox.ts";
+import { buildExternalLinkRel, EXTERNAL_LINK_TARGET } from "../external-link.ts";
 import { icons } from "../icons.ts";
 import type { SidebarContent } from "../sidebar-content.ts";
 import { formatToolDetail, resolveToolDisplay } from "../tool-display.ts";
@@ -260,13 +261,14 @@ function renderPreviewFrame(params: {
   height?: number;
   sandbox?: string;
 }) {
+  const effectiveHeight = Math.max(params.height ?? 0, 760);
   return html`
     <iframe
       class="chat-tool-card__preview-frame"
       title=${params.title}
       sandbox=${params.sandbox ?? ""}
       src=${params.src ?? nothing}
-      style=${params.height ? `height:${params.height}px` : ""}
+      style=${`height:${effectiveHeight}px`}
     ></iframe>
   `;
 }
@@ -291,19 +293,51 @@ export function renderToolPreview(
   if (preview.surface !== "assistant_message") {
     return nothing;
   }
+  const resolvedPreviewUrl = resolveCanvasIframeUrl(
+    preview.url,
+    options?.canvasHostUrl,
+    options?.allowExternalEmbedUrls ?? false,
+  );
+  if (!resolvedPreviewUrl) {
+    return nothing;
+  }
   return html`
-    <div class="chat-tool-card__preview" data-kind="canvas" data-surface=${surface}>
-      <div class="chat-tool-card__preview-header">
-        <span class="chat-tool-card__preview-label">${preview.title?.trim() || "Canvas"}</span>
-      </div>
-      <div class="chat-tool-card__preview-panel" data-side="canvas">
+    <div
+      class="${surface === "chat_message" ? "chat-companion-panel" : "chat-tool-card__preview"}"
+      data-kind="canvas"
+      data-surface=${surface}
+    >
+      ${surface === "chat_message"
+        ? html`<div class="chat-companion-panel__header">
+            <div class="chat-companion-panel__header-copy">
+              <div class="chat-companion-panel__title">${preview.title?.trim() || "Canvas"}</div>
+            </div>
+            ${resolvedPreviewUrl
+              ? html`<a
+                  class="chat-companion-panel__open"
+                  href=${resolvedPreviewUrl}
+                  target=${EXTERNAL_LINK_TARGET}
+                  rel=${buildExternalLinkRel()}
+                  title="打开报表"
+                  aria-label="打开报表"
+                >
+                  <span class="chat-companion-panel__open-icon">${icons.externalLink}</span>
+                  <span>打开报表</span>
+                </a>`
+              : nothing}
+          </div>`
+        : html`<div class="chat-tool-card__preview-header">
+            <span class="chat-tool-card__preview-label">${preview.title?.trim() || "Canvas"}</span>
+          </div>`}
+      <div
+        class="${surface === "chat_message"
+          ? "chat-companion-panel__body"
+          : "chat-tool-card__preview-panel"}"
+        data-side="canvas"
+      >
         ${renderPreviewFrame({
           title: preview.title?.trim() || "Canvas",
-          src: resolveCanvasIframeUrl(
-            preview.url,
-            options?.canvasHostUrl,
-            options?.allowExternalEmbedUrls ?? false,
-          ),
+          src: resolvedPreviewUrl,
           height: preview.preferredHeight,
           sandbox:
             preview.kind === "canvas"
