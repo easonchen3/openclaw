@@ -392,6 +392,30 @@ describe("toSanitizedMarkdownHtml", () => {
   });
 
   describe("security", () => {
+    it("rewrites internal canvas markdown links through the scoped canvas host", () => {
+      const html = toSanitizedMarkdownHtml(
+        "[打开完整报表](/__openclaw__/canvas/documents/ui-report-demo/index.html)",
+        {
+          canvasHostUrl: "http://127.0.0.1:19003/__openclaw__/cap/cap_123",
+        },
+      );
+      expect(html).toContain(
+        'href="http://127.0.0.1:19003/__openclaw__/cap/cap_123/__openclaw__/canvas/documents/ui-report-demo/index.html"',
+      );
+    });
+
+    it("rewrites visible internal canvas URL text when the label matches the raw href", () => {
+      const html = toSanitizedMarkdownHtml(
+        "[http://127.0.0.1:19289/__openclaw__/canvas/documents/ui-report-demo/index.html](http://127.0.0.1:19289/__openclaw__/canvas/documents/ui-report-demo/index.html)",
+        {
+          canvasHostUrl: "http://127.0.0.1:19003/__openclaw__/cap/cap_123",
+        },
+      );
+      expect(html).toContain(
+        ">http://127.0.0.1:19003/__openclaw__/cap/cap_123/__openclaw__/canvas/documents/ui-report-demo/index.html</a>",
+      );
+    });
+
     it("blocks javascript: in links via DOMPurify", () => {
       const html = toSanitizedMarkdownHtml("[click me](javascript:alert(1))");
       // DOMPurify strips dangerous href schemes but keeps the anchor text

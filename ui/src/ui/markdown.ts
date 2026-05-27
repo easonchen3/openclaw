@@ -2,6 +2,7 @@ import DOMPurify from "dompurify";
 import MarkdownIt from "markdown-it";
 import markdownItTaskLists from "markdown-it-task-lists";
 import { i18n, t } from "../i18n/index.ts";
+import { resolveCanvasIframeUrl } from "./canvas-url.ts";
 import { truncateText } from "./format.ts";
 import { normalizeLowercaseStringOrEmpty } from "./string-coerce.ts";
 
@@ -281,6 +282,42 @@ md.linkify.add("www", {
   },
 });
 
+function rewriteScopedCanvasLinks(
+  html: string,
+  options?: { canvasHostUrl?: string | null; allowExternalEmbedUrls?: boolean },
+): string {
+  const scopedCanvasHostUrl = options?.canvasHostUrl?.trim();
+  if (!scopedCanvasHostUrl || typeof document === "undefined") {
+    return html;
+  }
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  for (const anchor of template.content.querySelectorAll("a[href]")) {
+    const href = anchor.getAttribute("href");
+    if (!href) {
+      continue;
+    }
+    const scopedHref = resolveCanvasIframeUrl(
+      href,
+      scopedCanvasHostUrl,
+      options?.allowExternalEmbedUrls ?? false,
+    );
+    if (scopedHref) {
+      const visibleText = anchor.textContent?.trim() ?? "";
+      const normalizedVisibleText = visibleText.replace(/\s+/g, "");
+      const normalizedHref = href.trim().replace(/\s+/g, "");
+      const looksLikeInternalCanvasUrlLabel =
+        /^https?:\/\/(?:127(?:\.\d{1,3}){3}|localhost|\[::1\])(?::\d+)?\//i.test(visibleText) &&
+        /\/canvas\/documents\//i.test(visibleText);
+      anchor.setAttribute("href", scopedHref);
+      if (normalizedVisibleText === normalizedHref || looksLikeInternalCanvasUrlLabel) {
+        anchor.textContent = scopedHref;
+      }
+    }
+  }
+  return template.innerHTML;
+}
+
 // Override default link validator to allow all URLs through to renderers.
 // marked.js does not validate URLs at all — it generates <a>/<img> tags for
 // everything and relies on DOMPurify to strip dangerous schemes.
@@ -475,14 +512,18 @@ md.renderer.rules.code_block = (tokens, idx) => {
   return `<div class="code-block-wrapper">${header}${codeBlock}</div>`;
 };
 
-export function toSanitizedMarkdownHtml(markdown: string): string {
+export function toSanitizedMarkdownHtml(
+  markdown: string,
+  options?: { canvasHostUrl?: string | null; allowExternalEmbedUrls?: boolean },
+): string {
   const input = markdown.trim();
   if (!input) {
     return "";
   }
   installHooks();
+  const useCache = !options?.canvasHostUrl && input.length <= MARKDOWN_CACHE_MAX_CHARS;
   const cacheKey = `${i18n.getLocale()}\0${input}`;
-  if (input.length <= MARKDOWN_CACHE_MAX_CHARS) {
+  if (useCache) {
     const cached = getCachedMarkdown(cacheKey);
     if (cached !== null) {
       return cached;
@@ -497,8 +538,8 @@ export function toSanitizedMarkdownHtml(markdown: string): string {
     // capped code-block chrome, while still preserving whitespace for logs
     // and other structured text that commonly trips the parse guard.
     const html = renderEscapedPlainTextHtml(`${truncated.text}${suffix}`);
-    const sanitized = DOMPurify.sanitize(html, sanitizeOptions);
-    if (input.length <= MARKDOWN_CACHE_MAX_CHARS) {
+    const sanitized = rewriteScopedCanvasLinks(DOMPurify.sanitize(html, sanitizeOptions), options);
+    if (useCache) {
       setCachedMarkdown(cacheKey, sanitized);
     }
     return sanitized;
@@ -512,8 +553,11 @@ export function toSanitizedMarkdownHtml(markdown: string): string {
     const escaped = escapeHtml(`${truncated.text}${suffix}`);
     rendered = `<pre class="code-block">${escaped}</pre>`;
   }
-  const sanitized = DOMPurify.sanitize(rendered, sanitizeOptions);
-  if (input.length <= MARKDOWN_CACHE_MAX_CHARS) {
+  const sanitized = rewriteScopedCanvasLinks(
+    DOMPurify.sanitize(rendered, sanitizeOptions),
+    options,
+  );
+  if (useCache) {
     setCachedMarkdown(cacheKey, sanitized);
   }
   return sanitized;

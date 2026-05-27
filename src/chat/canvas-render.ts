@@ -71,6 +71,37 @@ function coerceCanvasPreview(
     return undefined;
   }
   const kind = getRecordStringField(record, "kind")?.trim().toLowerCase();
+  if (kind === "ui_artifact") {
+    const artifact = getNestedRecord(record, "artifact");
+    const presentation = getNestedRecord(record, "presentation");
+    const requestedSurface = getRecordStringField(presentation, "target");
+    const surface = requestedSurface ? normalizeSurface(requestedSurface) : "assistant_message";
+    if (!surface) {
+      return undefined;
+    }
+    const artifactUrl = getRecordStringField(artifact, "url");
+    if (!artifactUrl) {
+      return undefined;
+    }
+    const preferredHeight = normalizePreferredHeight(
+      getRecordNumberField(artifact, "preferred_height") ??
+        getRecordNumberField(artifact, "preferredHeight"),
+    );
+    const title = getRecordStringField(artifact, "title");
+    const viewId =
+      getRecordStringField(artifact, "id") ??
+      getRecordStringField(record, "docId") ??
+      getRecordStringField(record, "viewId");
+    return {
+      kind: "canvas",
+      surface,
+      render: "url",
+      url: artifactUrl,
+      ...(viewId ? { viewId } : {}),
+      ...(title ? { title } : {}),
+      ...(preferredHeight ? { preferredHeight } : {}),
+    };
+  }
   if (kind !== "canvas") {
     return undefined;
   }

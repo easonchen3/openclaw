@@ -108,7 +108,12 @@ export function renderMarkdownSidebar(props: MarkdownSidebarProps) {
                       </button>
                     </div>
                     <article class="sidebar-markdown-reader sidebar-markdown">
-                      ${unsafeHTML(toSanitizedMarkdownHtml(content.content))}
+                      ${unsafeHTML(
+                        toSanitizedMarkdownHtml(content.content, {
+                          canvasHostUrl: props.canvasHostUrl,
+                          allowExternalEmbedUrls: props.allowExternalEmbedUrls ?? false,
+                        }),
+                      )}
                     </article>
                   </section>
                 `
