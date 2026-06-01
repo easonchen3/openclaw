@@ -72,4 +72,37 @@ describe("ui_artifact tool", () => {
       '"html_path": "C:\\\\Users\\\\test\\\\.openclaw\\\\canvas\\\\documents\\\\ui-report-demo\\\\index.html"',
     );
   });
+
+  it("materializes canvas URL placeholders in summary markdown", async () => {
+    const tool = createUiArtifactTool(createApi());
+    const result = await tool.execute("call-3", {
+      title: "Weekly Report",
+      summaryMarkdown: "Top findings.\n\n[Open](${CANVAS_URL})",
+      canvasUrl: "/__openclaw__/canvas/documents/ui-report-demo/index.html",
+      preferredHeight: 640,
+    });
+
+    const text = (result.content?.[0] as { text?: string } | undefined)?.text ?? "";
+    expect(text).toContain(
+      '"summary_markdown": "Top findings.\\n\\n[Open](/__openclaw__/canvas/documents/ui-report-demo/index.html)"',
+    );
+    expect(text).not.toContain("${CANVAS_URL}");
+  });
+
+  it("normalizes bare ui-report document urls into hosted canvas urls", async () => {
+    const tool = createUiArtifactTool(createApi());
+    const result = await tool.execute("call-4", {
+      title: "Weekly Report",
+      summaryMarkdown: "Top findings.\n\n[Open](http://127.0.0.1:19289/ui-report-demo/index.html)",
+      canvasUrl: "http://127.0.0.1:19289/ui-report-demo/index.html",
+      preferredHeight: 640,
+    });
+
+    const text = (result.content?.[0] as { text?: string } | undefined)?.text ?? "";
+    expect(text).toContain('"/__openclaw__/canvas/documents/ui-report-demo/index.html"');
+    expect(text).toContain(
+      '"summary_markdown": "Top findings.\\n\\n[Open](/__openclaw__/canvas/documents/ui-report-demo/index.html)"',
+    );
+    expect(text).not.toContain("http://127.0.0.1:19289/ui-report-demo/index.html");
+  });
 });

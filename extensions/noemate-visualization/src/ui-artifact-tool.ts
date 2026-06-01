@@ -36,11 +36,11 @@ export function createUiArtifactTool(api: OpenClawPluginApi) {
     }),
     async execute(_toolCallId: string, params: UiArtifactToolParams) {
       const title = normalizeString(params.title, "Generated Report");
-      const summaryMarkdown = normalizeString(params.summaryMarkdown);
+      const summaryMarkdownTemplate = normalizeString(params.summaryMarkdown);
       const html = normalizeString(params.html);
       const htmlPath = normalizeString(params.htmlPath);
-      const canvasUrl = normalizeString(params.canvasUrl);
-      if (!summaryMarkdown) {
+      const canvasUrl = normalizeCanvasUrl(normalizeString(params.canvasUrl));
+      if (!summaryMarkdownTemplate) {
         throw new Error("summaryMarkdown is required");
       }
       const preferredHeight = normalizeHeight(params.preferredHeight);
@@ -73,6 +73,7 @@ export function createUiArtifactTool(api: OpenClawPluginApi) {
       if (!artifactUrl) {
         throw new Error("failed to resolve artifact URL");
       }
+      const summaryMarkdown = materializeSummaryMarkdown(summaryMarkdownTemplate, artifactUrl);
 
       const payload = {
         kind: "ui_artifact",
@@ -103,4 +104,56 @@ export function createUiArtifactTool(api: OpenClawPluginApi) {
 function resolveCanvasArtifactId(canvasUrl: string): string {
   const match = /\/__openclaw__\/canvas\/documents\/([^/]+)\//u.exec(canvasUrl);
   return match?.[1] ?? "";
+}
+
+function materializeSummaryMarkdown(summaryMarkdown: string, canvasUrl: string): string {
+  const bareDocumentPath = canvasUrl.match(/\/__openclaw__\/canvas\/documents\/([^?#]+)$/u)?.[1];
+  const materialized = summaryMarkdown.replaceAll("${CANVAS_URL}", canvasUrl);
+  if (!bareDocumentPath) {
+    return materialized;
+  }
+  const escapedPath = escapeRegExp(bareDocumentPath);
+  return materialized.replace(
+    new RegExp(
+      String.raw`(\]\()(?:https?:\/\/(?:127(?:\.\d{1,3}){3}|localhost|\[::1\])(?::\d+)?\/)?${escapedPath}([?#][^)]*)?(\))`,
+      "giu",
+    ),
+    (_match, open: string, _suffix: string | undefined, close: string) =>
+      `${open}${canvasUrl}${close}`,
+  );
+}
+
+function normalizeCanvasUrl(canvasUrl: string): string {
+  if (!canvasUrl) {
+    return "";
+  }
+  try {
+    const parsed = new URL(canvasUrl, "http://localhost");
+    if (parsed.pathname.startsWith("/__openclaw__/canvas/")) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+    const bareDocumentPath = normalizeBareDocumentPath(parsed.pathname, parsed.search, parsed.hash);
+    if (bareDocumentPath) {
+      return `/__openclaw__/canvas/documents/${bareDocumentPath}`;
+    }
+  } catch {
+    // Fall through to the string-based path check below.
+  }
+  const bareDocumentPath = normalizeBareDocumentPath(canvasUrl);
+  return bareDocumentPath ? `/__openclaw__/canvas/documents/${bareDocumentPath}` : canvasUrl;
+}
+
+function normalizeBareDocumentPath(pathname: string, search = "", hash = ""): string {
+  const trimmed = pathname.trim().replace(/^\/+/u, "");
+  if (!trimmed || trimmed.startsWith("__openclaw__/")) {
+    return "";
+  }
+  if (!/^[^/?#]+\/index\.html$/u.test(trimmed)) {
+    return "";
+  }
+  return `${trimmed}${search}${hash}`;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
