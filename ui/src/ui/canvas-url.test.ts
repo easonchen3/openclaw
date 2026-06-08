@@ -33,6 +33,17 @@ describe("resolveCanvasIframeUrl", () => {
     );
   });
 
+  it("rewrites remote absolute canvas URLs through the scoped canvas host", () => {
+    expect(
+      resolveCanvasIframeUrl(
+        "http://10.120.212.87/__openclaw__/canvas/documents/cv_demo/index.html",
+        "http://127.0.0.1:19003/__openclaw__/cap/cap_123",
+      ),
+    ).toBe(
+      "http://127.0.0.1:19003/__openclaw__/cap/cap_123/__openclaw__/canvas/documents/cv_demo/index.html",
+    );
+  });
+
   it("rejects internal canvas paths when the host is not capability scoped", () => {
     expect(
       resolveCanvasIframeUrl(

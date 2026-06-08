@@ -1,8 +1,6 @@
 const A2UI_PATH = "/__openclaw__/a2ui";
 const CANVAS_HOST_PATH = "/__openclaw__/canvas";
 const CANVAS_CAPABILITY_PATH_PREFIX = "/__openclaw__/cap";
-const LOCAL_CANVAS_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
-
 function isCanvasHttpPath(pathname: string): boolean {
   return (
     pathname === CANVAS_HOST_PATH ||
@@ -16,14 +14,6 @@ function isExternalHttpUrl(entry: URL): boolean {
   return entry.protocol === "http:" || entry.protocol === "https:";
 }
 
-function isLocalCanvasHttpUrl(entry: URL): boolean {
-  return (
-    isExternalHttpUrl(entry) &&
-    LOCAL_CANVAS_HOSTS.has(entry.hostname) &&
-    isCanvasHttpPath(entry.pathname)
-  );
-}
-
 function sanitizeCanvasEntryUrl(
   rawEntryUrl: string,
   allowExternalEmbedUrls = false,
@@ -31,7 +21,7 @@ function sanitizeCanvasEntryUrl(
   try {
     const entry = new URL(rawEntryUrl, "http://localhost");
     if (entry.origin !== "http://localhost") {
-      if (isLocalCanvasHttpUrl(entry)) {
+      if (isExternalHttpUrl(entry) && isCanvasHttpPath(entry.pathname)) {
         return `${entry.pathname}${entry.search}${entry.hash}`;
       }
       if (!allowExternalEmbedUrls || !isExternalHttpUrl(entry)) {

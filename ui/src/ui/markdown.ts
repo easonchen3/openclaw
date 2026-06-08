@@ -307,8 +307,7 @@ function rewriteScopedCanvasLinks(
       const normalizedVisibleText = visibleText.replace(/\s+/g, "");
       const normalizedHref = href.trim().replace(/\s+/g, "");
       const looksLikeInternalCanvasUrlLabel =
-        /^https?:\/\/(?:127(?:\.\d{1,3}){3}|localhost|\[::1\])(?::\d+)?\//i.test(visibleText) &&
-        /\/canvas\/documents\//i.test(visibleText);
+        /^https?:\/\//i.test(visibleText) && /\/canvas\/documents\//i.test(visibleText);
       anchor.setAttribute("href", scopedHref);
       if (normalizedVisibleText === normalizedHref || looksLikeInternalCanvasUrlLabel) {
         anchor.textContent = scopedHref;

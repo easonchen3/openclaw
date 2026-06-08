@@ -416,6 +416,22 @@ describe("toSanitizedMarkdownHtml", () => {
       );
     });
 
+    it("rewrites remote absolute canvas URL text through the scoped canvas host", () => {
+      const html = toSanitizedMarkdownHtml(
+        "[http://10.120.212.87/__openclaw__/canvas/documents/ui-report-demo/index.html](http://10.120.212.87/__openclaw__/canvas/documents/ui-report-demo/index.html)",
+        {
+          canvasHostUrl: "http://127.0.0.1:19003/__openclaw__/cap/cap_123",
+        },
+      );
+      expect(html).toContain(
+        'href="http://127.0.0.1:19003/__openclaw__/cap/cap_123/__openclaw__/canvas/documents/ui-report-demo/index.html"',
+      );
+      expect(html).toContain(
+        ">http://127.0.0.1:19003/__openclaw__/cap/cap_123/__openclaw__/canvas/documents/ui-report-demo/index.html</a>",
+      );
+      expect(html).not.toContain("10.120.212.87");
+    });
+
     it("blocks javascript: in links via DOMPurify", () => {
       const html = toSanitizedMarkdownHtml("[click me](javascript:alert(1))");
       // DOMPurify strips dangerous href schemes but keeps the anchor text
