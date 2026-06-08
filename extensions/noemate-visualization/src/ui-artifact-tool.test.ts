@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { createTestPluginApi } from "openclaw/plugin-sdk/plugin-test-api";
 import { describe, expect, it, vi } from "vitest";
 import { createUiArtifactTool } from "./ui-artifact-tool.js";
@@ -50,27 +53,39 @@ describe("ui_artifact tool", () => {
     expect(text).toContain('"/__openclaw__/canvas/documents/cv_ui_report_demo/index.html"');
   });
 
-  it("passes through an existing hosted canvas document without creating a new artifact", async () => {
-    const api = createApi();
-    const createCanvasArtifact = api.runtime.richArtifacts.createCanvasArtifact as ReturnType<
-      typeof vi.fn
-    >;
-    const tool = createUiArtifactTool(api);
-    const result = await tool.execute("call-2", {
-      title: "Weekly Report",
-      summaryMarkdown: "Top findings in brief.",
-      htmlPath: "C:\\Users\\test\\.openclaw\\canvas\\documents\\ui-report-demo\\index.html",
-      canvasUrl: "/__openclaw__/canvas/documents/ui-report-demo/index.html",
-      preferredHeight: 640,
-    });
+  it("materializes an existing htmlPath into the active hosted canvas root", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-ui-artifact-"));
+    try {
+      const htmlPath = path.join(root, "index.html");
+      await fs.writeFile(htmlPath, "<!doctype html><html><body><h1>Report</h1></body></html>");
+      const api = createApi();
+      const createCanvasArtifact = api.runtime.richArtifacts.createCanvasArtifact as ReturnType<
+        typeof vi.fn
+      >;
+      const tool = createUiArtifactTool(api);
+      const result = await tool.execute("call-2", {
+        title: "Weekly Report",
+        summaryMarkdown:
+          "Top findings in brief.\n\n[Open](/__openclaw__/canvas/documents/ui-report-demo/index.html)",
+        htmlPath,
+        canvasUrl: "/__openclaw__/canvas/documents/ui-report-demo/index.html",
+        preferredHeight: 640,
+      });
 
-    expect(createCanvasArtifact).not.toHaveBeenCalled();
-    const text = (result.content?.[0] as { text?: string } | undefined)?.text ?? "";
-    expect(text).toContain('"id": "ui-report-demo"');
-    expect(text).toContain('"/__openclaw__/canvas/documents/ui-report-demo/index.html"');
-    expect(text).toContain(
-      '"html_path": "C:\\\\Users\\\\test\\\\.openclaw\\\\canvas\\\\documents\\\\ui-report-demo\\\\index.html"',
-    );
+      expect(createCanvasArtifact).toHaveBeenCalledWith({
+        kind: "html_bundle",
+        title: "Weekly Report",
+        preferredHeight: 640,
+        html: "<!doctype html><html><body><h1>Report</h1></body></html>",
+        surface: "assistant_message",
+      });
+      const text = (result.content?.[0] as { text?: string } | undefined)?.text ?? "";
+      expect(text).toContain('"id": "cv_ui_report_demo"');
+      expect(text).toContain('"/__openclaw__/canvas/documents/cv_ui_report_demo/index.html"');
+      expect(text).not.toContain("/__openclaw__/canvas/documents/ui-report-demo/index.html");
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 
   it("materializes canvas URL placeholders in summary markdown", async () => {

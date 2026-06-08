@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import { Type } from "../api.js";
 import type { OpenClawPluginApi } from "../api.js";
 
@@ -50,18 +51,13 @@ export function createUiArtifactTool(api: OpenClawPluginApi) {
       let artifactTitle = title;
       let artifactPreferredHeight = preferredHeight;
 
-      if (canvasUrl) {
-        artifactUrl = canvasUrl;
-        artifactId = resolveCanvasArtifactId(canvasUrl);
-      } else {
-        if (!html) {
-          throw new Error("html is required when canvasUrl is not provided");
-        }
+      const materializedHtml = html || (htmlPath ? await readHtmlPath(htmlPath) : "");
+      if (materializedHtml) {
         const artifact = await api.runtime.richArtifacts.createCanvasArtifact({
           kind: "html_bundle",
           title,
           preferredHeight,
-          html,
+          html: materializedHtml,
           surface: "assistant_message",
         });
         artifactId = artifact.manifest.id;
@@ -70,10 +66,19 @@ export function createUiArtifactTool(api: OpenClawPluginApi) {
         artifactPreferredHeight = artifact.manifest.preferredHeight ?? preferredHeight;
       }
 
-      if (!artifactUrl) {
-        throw new Error("failed to resolve artifact URL");
+      if (!artifactUrl && canvasUrl) {
+        artifactUrl = canvasUrl;
+        artifactId = resolveCanvasArtifactId(canvasUrl);
       }
-      const summaryMarkdown = materializeSummaryMarkdown(summaryMarkdownTemplate, artifactUrl);
+
+      if (!artifactUrl) {
+        throw new Error("html or canvasUrl is required");
+      }
+      const summaryMarkdown = materializeSummaryMarkdown(
+        summaryMarkdownTemplate,
+        artifactUrl,
+        canvasUrl,
+      );
 
       const payload = {
         kind: "ui_artifact",
@@ -101,26 +106,49 @@ export function createUiArtifactTool(api: OpenClawPluginApi) {
   };
 }
 
+async function readHtmlPath(htmlPath: string): Promise<string> {
+  try {
+    return await fs.readFile(htmlPath, "utf8");
+  } catch {
+    return "";
+  }
+}
+
 function resolveCanvasArtifactId(canvasUrl: string): string {
   const match = /\/__openclaw__\/canvas\/documents\/([^/]+)\//u.exec(canvasUrl);
   return match?.[1] ?? "";
 }
 
-function materializeSummaryMarkdown(summaryMarkdown: string, canvasUrl: string): string {
+function materializeSummaryMarkdown(
+  summaryMarkdown: string,
+  canvasUrl: string,
+  sourceCanvasUrl = "",
+): string {
   const bareDocumentPath = canvasUrl.match(/\/__openclaw__\/canvas\/documents\/([^?#]+)$/u)?.[1];
-  const materialized = summaryMarkdown.replaceAll("${CANVAS_URL}", canvasUrl);
-  if (!bareDocumentPath) {
+  const sourceBareDocumentPath =
+    sourceCanvasUrl.match(/\/__openclaw__\/canvas\/documents\/([^?#]+)$/u)?.[1] ??
+    sourceCanvasUrl.match(/^\/?([^/?#]+\/index\.html)(?:[?#].*)?$/u)?.[1];
+  let materialized = summaryMarkdown.replaceAll("${CANVAS_URL}", canvasUrl);
+  const paths = [
+    ...new Set(
+      [bareDocumentPath, sourceBareDocumentPath].filter((value): value is string => Boolean(value)),
+    ),
+  ];
+  if (paths.length === 0) {
     return materialized;
   }
-  const escapedPath = escapeRegExp(bareDocumentPath);
-  return materialized.replace(
-    new RegExp(
-      String.raw`(\]\()(?:https?:\/\/(?:127(?:\.\d{1,3}){3}|localhost|\[::1\])(?::\d+)?\/)?${escapedPath}([?#][^)]*)?(\))`,
-      "giu",
-    ),
-    (_match, open: string, _suffix: string | undefined, close: string) =>
-      `${open}${canvasUrl}${close}`,
-  );
+  for (const path of paths) {
+    const escapedPath = escapeRegExp(path);
+    materialized = materialized.replace(
+      new RegExp(
+        String.raw`(\]\()(?:https?:\/\/[^/\s)]+)?\/?(?:__openclaw__\/canvas\/documents\/)?${escapedPath}([?#][^)]*)?(\))`,
+        "giu",
+      ),
+      (_match, open: string, _suffix: string | undefined, close: string) =>
+        `${open}${canvasUrl}${close}`,
+    );
+  }
+  return materialized;
 }
 
 function normalizeCanvasUrl(canvasUrl: string): string {
