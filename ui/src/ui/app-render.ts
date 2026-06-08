@@ -1839,6 +1839,7 @@ export function renderApp(state: AppViewState) {
                 runsStatusFilter: state.cronRunsStatusFilter,
                 runsQuery: state.cronRunsQuery,
                 runsSortDir: state.cronRunsSortDir,
+                canvasHostUrl: state.hello?.canvasHostUrl ?? null,
                 fieldErrors: state.cronFieldErrors,
                 canSubmit: !hasCronFormErrors(state.cronFieldErrors),
                 agentSuggestions: cronAgentSuggestions,

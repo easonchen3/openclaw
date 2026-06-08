@@ -27,6 +27,7 @@ import type { CronFormState } from "../ui-types.ts";
 
 export type CronProps = {
   basePath: string;
+  canvasHostUrl?: string | null;
   loading: boolean;
   jobsLoadingMore: boolean;
   status: CronStatus | null;
@@ -693,7 +694,9 @@ export function renderCron(props: CronProps) {
                 `
               : html`
                   <div class="list" style="margin-top: 12px;">
-                    ${runs.map((entry) => renderRun(entry, props.basePath, props.onNavigateToChat))}
+                    ${runs.map((entry) =>
+                      renderRun(entry, props.basePath, props.canvasHostUrl, props.onNavigateToChat),
+                    )}
                   </div>
                 `}
           ${(props.runsScope === "all" || props.runsJobId != null) && props.runsHasMore
@@ -1531,7 +1534,7 @@ function renderJob(job: CronJob, props: CronProps) {
         </div>
         <div class="list-meta">${renderJobState(job)}</div>
       </div>
-      ${renderJobPayload(job)}
+      ${renderJobPayload(job, props.canvasHostUrl)}
       <div class="cron-job-footer">
         <div class="chip-row cron-job-chips">
           <span class=${`chip ${job.enabled ? "chip-ok" : "chip-danger"}`}>
@@ -1617,7 +1620,7 @@ function renderJob(job: CronJob, props: CronProps) {
   `;
 }
 
-function renderJobPayload(job: CronJob) {
+function renderJobPayload(job: CronJob, canvasHostUrl?: string | null) {
   const payload = getCronJobPayload(job);
   if (!payload) {
     return html``;
@@ -1644,7 +1647,7 @@ function renderJobPayload(job: CronJob) {
       <div class="cron-job-detail-section">
         <span class="cron-job-detail-label">${t("cron.jobDetail.prompt")}</span>
         <div class="muted cron-job-detail-value chat-text" @click=${stopPropagationForInteractive}>
-          ${unsafeHTML(toSanitizedMarkdownHtml(payload.message))}
+          ${unsafeHTML(toSanitizedMarkdownHtml(payload.message, { canvasHostUrl }))}
         </div>
       </div>
       ${delivery
@@ -1750,6 +1753,7 @@ function runDeliveryLabel(value: string): string {
 function renderRun(
   entry: CronRunLogEntry,
   basePath: string,
+  canvasHostUrl?: string | null,
   onNavigateToChat?: (sessionKey: string) => void,
 ) {
   const chatUrl =
@@ -1821,7 +1825,7 @@ function renderRun(
         </div>
       </div>
       <div class="cron-run-entry__body chat-text">
-        ${unsafeHTML(toSanitizedMarkdownHtml(bodySource))}
+        ${unsafeHTML(toSanitizedMarkdownHtml(bodySource, { canvasHostUrl }))}
       </div>
     </div>
   `;

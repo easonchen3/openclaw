@@ -730,4 +730,36 @@ describe("cron view", () => {
       container.querySelector('input[list="cron-delivery-account-suggestions"]'),
     ).not.toBeNull();
   });
+
+  it("rewrites cron run canvas links through the scoped canvas host", () => {
+    const container = document.createElement("div");
+    render(
+      renderCron(
+        createProps({
+          canvasHostUrl: "http://127.0.0.1:19003/__openclaw__/cap/cap_123",
+          runsScope: "all",
+          runs: [
+            {
+              id: "run-ui-report",
+              jobId: "job-ui-report",
+              startedAtMs: 0,
+              finishedAtMs: 1,
+              status: "ok",
+              deliveryStatus: "not-requested",
+              summary:
+                "[打开完整报表](/__openclaw__/canvas/documents/ui-report-20260608T030446Z-report/index.html)",
+            },
+          ],
+        }),
+      ),
+      container,
+    );
+
+    const link = container.querySelector<HTMLAnchorElement>(
+      'a[href*="/__openclaw__/cap/cap_123/__openclaw__/canvas/documents/ui-report-20260608T030446Z-report/index.html"]',
+    );
+    expect(link?.href).toBe(
+      "http://127.0.0.1:19003/__openclaw__/cap/cap_123/__openclaw__/canvas/documents/ui-report-20260608T030446Z-report/index.html",
+    );
+  });
 });
